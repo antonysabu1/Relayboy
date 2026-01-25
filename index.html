@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Relay Chat</title>
+</head>
+<body>
+  <h2>Relay Chat</h2>
+
+  <input id="username" placeholder="Your name" />
+  <button onclick="connect()">Connect</button>
+  <br><br>
+
+  <input id="to" placeholder="Send to" />
+  <input id="msg" placeholder="Message" />
+  <button onclick="send()">Send</button>
+
+  <pre id="chat"></pre>
+
+<script>
+let socket;
+
+function connect() {
+  socket = new WebSocket("wss://YOUR_SERVER_URL");
+
+  socket.onopen = () => {
+    socket.send(JSON.stringify({
+      type: "register",
+      username: document.getElementById("username").value
+    }));
+  };
+
+  socket.onmessage = (e) => {
+    const data = JSON.parse(e.data);
+    document.getElementById("chat").textContent +=
+      `${data.from}: ${data.message}\n`;
+  };
+}
+
+function send() {
+  socket.send(JSON.stringify({
+    type: "message",
+    to: document.getElementById("to").value,
+    message: document.getElementById("msg").value
+  }));
+}
+</script>
+</body>
+</html>
