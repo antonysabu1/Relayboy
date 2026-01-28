@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>RelayBoy Login</title>
+<style>
+body { background:#111; color:#fff; font-family:Arial, sans-serif; display:flex; align-items:center; justify-content:center; height:100vh; }
+.container { width:360px; background:#1a1a2e; padding:20px; border-radius:8px; }
+input,button { width:100%; padding:10px; margin:6px 0; border-radius:4px; border:none; }
+button { background:#e94560; color:#fff; }
+.error { color:#ff7b7b; }
+.switch { text-align:center; margin-top:10px; color:#ccc; }
+a { color:#fff; text-decoration:underline }
+</style>
+</head>
+<body>
+<div class="container">
+  <h2>RelayBoy</h2>
+  <div id="forms">
+    <div id="loginForm">
+      <input id="loginIdentifier" placeholder="Email or Username" />
+      <input id="loginPassword" type="password" placeholder="Password" />
+      <button onclick="doLogin()">Login</button>
+      <div class="switch">Don't have an account? <a href="#" onclick="showRegister()">Register</a></div>
+    </div>
+
+    <div id="regForm" style="display:none;">
+      <input id="regEmail" placeholder="Email" />
+      <input id="regUsername" placeholder="Username" />
+      <input id="regPassword" type="password" placeholder="Password" />
+      <button onclick="doRegister()">Register</button>
+      <div class="switch">Already have an account? <a href="#" onclick="showLogin()">Login</a></div>
+    </div>
+  </div>
+  <div id="error" class="error"></div>
+</div>
+
+<script>
+async function doRegister() {
+  const email = document.getElementById('regEmail').value.trim();
+  const username = document.getElementById('regUsername').value.trim();
+  const password = document.getElementById('regPassword').value;
+  document.getElementById('error').textContent = '';
+  try {
+    const res = await fetch('/register', { method: 'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ email, username, password }) });
+    const j = await res.json();
+    if (!res.ok) throw new Error(j.error || 'Register failed');
+    window.location.href = '/chat';
+  } catch (e) { document.getElementById('error').textContent = e.message; }
+}
+
+async function doLogin() {
+  const identifier = document.getElementById('loginIdentifier').value.trim();
+  const password = document.getElementById('loginPassword').value;
+  document.getElementById('error').textContent = '';
+  try {
+    const res = await fetch('/login', { method: 'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ emailOrUsername: identifier, password }) });
+    const j = await res.json();
+    if (!res.ok) throw new Error(j.error || 'Login failed');
+    window.location.href = '/chat';
+  } catch (e) { document.getElementById('error').textContent = e.message; }
+}
+
+function showRegister(){ document.getElementById('loginForm').style.display='none'; document.getElementById('regForm').style.display='block'; document.getElementById('error').textContent=''; }
+function showLogin(){ document.getElementById('loginForm').style.display='block'; document.getElementById('regForm').style.display='none'; document.getElementById('error').textContent=''; }
+</script>
+</body>
+</html>

@@ -44,8 +44,8 @@ button:hover { background: #d1344a; }
 <h1>RelayBoy Chat</h1>
 
 <div class="input-group">
-  <input id="username" placeholder="Enter your username" />
-  <button onclick="connect()">Connect</button>
+  <div style="flex:1; color:#ccc; padding:10px;">Open this page after you log in. <a href="/login" style="color:#fff; text-decoration:underline;">Login / Register</a></div>
+  <div id="status" style="padding:10px; color:#fff;">Connecting...</div>
 </div>
 <div id="error"></div>
 
@@ -62,50 +62,51 @@ button:hover { background: #d1344a; }
   <button onclick="send()">Send</button>
 </div>
 
+</script>
 <script>
 let socket;
 let username;
 let currentChat = null;
-let chatHistory = {}; // per-user messages
+let chatHistory = {};
 
-function connect() {
-  username = document.getElementById("username").value.trim();
-  const errorDiv = document.getElementById("error");
-  errorDiv.textContent = "";
-  if (!username) return errorDiv.textContent = "Enter a valid username";
-
+function connectWS() {
   const protocol = window.location.hostname === "localhost" ? "ws" : "wss";
   socket = new WebSocket(`${protocol}://${window.location.host}`);
 
   socket.onopen = () => {
-    socket.send(JSON.stringify({ type: "register", username }));
-    errorDiv.textContent = "Connected as " + username;
+    document.getElementById('status').textContent = 'Connected, waiting for server...';
   };
 
   socket.onmessage = (e) => {
     const data = JSON.parse(e.data);
-
-    if (data.type === "error") {
+    const errorDiv = document.getElementById('error');
+    if (data.type === 'error') {
       errorDiv.textContent = data.message;
       socket.close();
     }
-
-    if (data.type === "users") {
-      const usersDiv = document.getElementById("users");
-      usersDiv.innerHTML = "";
+    if (data.type === 'connected') {
+      username = data.username;
+      document.getElementById('status').textContent = 'Connected as ' + username;
+    }
+    if (data.type === 'users') {
+      const usersDiv = document.getElementById('users');
+      usersDiv.innerHTML = '';
       data.users.filter(u => u !== username).forEach(u => {
-        const li = document.createElement("li");
+        const li = document.createElement('li');
         li.innerHTML = `<span class="avatar">${u.charAt(0).toUpperCase()}</span>${u}`;
         li.onclick = () => openChat(u);
         usersDiv.appendChild(li);
       });
     }
-
-    if (data.type === "message") {
+    if (data.type === 'message') {
       if (!chatHistory[data.from]) chatHistory[data.from] = [];
       chatHistory[data.from].push({ from: data.from, message: data.message, timestamp: data.timestamp });
       if (currentChat === data.from) renderChat(currentChat);
     }
+  };
+
+  socket.onclose = () => {
+    document.getElementById('status').textContent = 'Disconnected';
   };
 }
 
@@ -116,30 +117,29 @@ function openChat(user) {
 }
 
 function send() {
-  const msgInput = document.getElementById("msg");
+  const msgInput = document.getElementById('msg');
   const msg = msgInput.value.trim();
   if (!msg || !currentChat) return;
-
-  socket.send(JSON.stringify({ type: "message", to: currentChat, message: msg }));
-
+  socket.send(JSON.stringify({ type: 'message', to: currentChat, message: msg }));
   if (!chatHistory[currentChat]) chatHistory[currentChat] = [];
   chatHistory[currentChat].push({ from: username, message: msg, timestamp: new Date().toLocaleTimeString() });
   renderChat(currentChat);
-
-  msgInput.value = "";
+  msgInput.value = '';
 }
 
 function renderChat(user) {
-  const chat = document.getElementById("chat");
-  chat.innerHTML = "";
+  const chat = document.getElementById('chat');
+  chat.innerHTML = '';
   chatHistory[user].forEach(msg => {
-    const div = document.createElement("div");
-    div.className = "message " + (msg.from === username ? "right" : "left");
+    const div = document.createElement('div');
+    div.className = 'message ' + (msg.from === username ? 'right' : 'left');
     div.innerHTML = msg.message + `<span class="timestamp"> [${msg.timestamp}]</span>`;
     chat.appendChild(div);
   });
   chat.scrollTop = chat.scrollHeight;
 }
+
+window.addEventListener('load', () => connectWS());
 </script>
 </body>
 </html>
