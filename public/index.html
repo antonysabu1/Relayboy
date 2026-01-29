@@ -357,6 +357,8 @@
                     updateUsersList(data.users);
                 } else if (data.type === 'message') {
                     handleIncomingMessage(data);
+                } else if (data.type === 'history') {
+                    handleHistory(data);
                 }
             };
 
@@ -399,6 +401,12 @@
 
             document.getElementById('chatTitle').textContent = `Chat with ${user}`;
             document.getElementById('inputArea').style.display = 'flex';
+            
+            // Request history for this user
+            ws.send(JSON.stringify({ type: 'get_history', to: user }));
+            
+            // Show loading or empty state until history arrives
+            messages[user] = []; // Optional: clear old cache or keep it
             displayMessages(user);
         }
 
@@ -432,6 +440,20 @@
 
             if (selectedUser === from) {
                 displayMessages(from);
+            }
+        }
+
+        function handleHistory(data) {
+            const targetUser = data.with;
+            const history = data.messages.map(m => ({
+                message: m.message,
+                timestamp: new Date(m.timestamp).toLocaleTimeString(),
+                incoming: m.from !== currentUser
+            }));
+            messages[targetUser] = history;
+            
+            if (selectedUser === targetUser) {
+                displayMessages(targetUser);
             }
         }
 
