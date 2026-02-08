@@ -267,6 +267,22 @@ wss.on("connection", async (ws, req) => {
             timestamp: new Date().toLocaleTimeString()
           }));
         }
+      } else if (data.type === "typing") {
+        const target = clients.get(data.to);
+        if (target && target.readyState === 1) {
+          target.send(JSON.stringify({
+            type: "typing",
+            from: username
+          }));
+        }
+      } else if (data.type === "seen") {
+        const target = clients.get(data.to);
+        if (target && target.readyState === 1) {
+          target.send(JSON.stringify({
+            type: "seen",
+            from: username
+          }));
+        }
       } else if (data.type === "get_history") {
         console.log(`📜 Fetching history between ${username} and ${data.to}`);
         // Fetch history between username and data.to

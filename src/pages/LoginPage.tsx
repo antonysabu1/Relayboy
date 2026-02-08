@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { MessageCircle, Mail, User, Lock, ArrowRight, Sparkles } from "lucide-react";
+import { MessageCircle, Mail, User, Lock, ArrowRight, Sparkles, Shield } from "lucide-react";
 import PageTransition from "@/components/PageTransition";
 import AnimatedBackground from "@/components/AnimatedBackground";
 import { motion, AnimatePresence } from "framer-motion";
@@ -57,7 +57,8 @@ export default function LoginPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Registration failed");
-      navigate("/chat");
+      sessionStorage.setItem("register_email", regEmail);
+      navigate("/verify-otp");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Registration failed");
     } finally {
@@ -85,9 +86,9 @@ export default function LoginPage() {
               <MessageCircle className="w-8 h-8 text-primary-foreground" />
             </div>
             <h1 className="text-4xl font-display font-bold gradient-text mb-2">RelayBoy</h1>
-            <p className="text-muted-foreground text-sm flex items-center justify-center gap-1">
+            <p className="text-muted-foreground text-sm flex items-center justify-center gap-2">
               <Sparkles className="w-4 h-4 text-primary" />
-              Real-time messaging, beautifully crafted
+              Quantum-secure messaging, beautifully crafted
             </p>
           </motion.div>
 
@@ -96,7 +97,7 @@ export default function LoginPage() {
             layout
             initial={{ scale: 0.95, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            className="glass-card rounded-[2.5rem] p-8 sm:p-10 shadow-2xl border border-white/10"
+            className="glass-card quantum-card rounded-[2.5rem] p-8 sm:p-10 shadow-2xl border border-white/10"
           >
             <motion.h2
               key={mode}
@@ -263,13 +264,13 @@ export default function LoginPage() {
           <motion.p
             initial={{ opacity: 0 }}
             animate={{ opacity: 0.6 }}
-            className="text-center text-xs text-muted-foreground mt-8 uppercase tracking-widest font-bold"
+            className="text-center text-xs text-muted-foreground mt-8 uppercase tracking-widest font-bold flex items-center justify-center gap-2"
           >
-            Secure • Real-time • Beautiful
+            <Shield className="w-3 h-3 text-primary" />
+            Quantum Secure | Relay Speed | Zero Trust
           </motion.p>
         </div>
       </div>
     </PageTransition>
   );
 }
-

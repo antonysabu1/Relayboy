@@ -11,6 +11,18 @@ export default defineConfig(({ mode }) => ({
     hmr: {
       overlay: false,
     },
+    proxy: {
+      "/login": { target: "http://localhost:3000", changeOrigin: true },
+      "/register": { target: "http://localhost:3000", changeOrigin: true },
+      "/verify-register-otp": { target: "http://localhost:3000", changeOrigin: true },
+      "/logout": { target: "http://localhost:3000", changeOrigin: true },
+      "^/(socket|ws)$": { target: "ws://localhost:3000", ws: true },
+      "/": {
+        target: "ws://localhost:3000",
+        ws: true,
+        bypass: (req) => (req.headers.upgrade === "websocket" ? undefined : req.url),
+      },
+    },
   },
   plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
   resolve: {

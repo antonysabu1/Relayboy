@@ -51,20 +51,20 @@ export default function Index() {
             className="text-center max-w-3xl"
           >
             {/* Badge */}
-            <motion.div variants={item} className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass mb-8 border border-white/10">
+            <motion.div variants={item} className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass mb-8 border border-white/10 neon-outline">
               <Sparkles className="w-4 h-4 text-primary animate-pulse" />
-              <span className="text-sm font-medium text-muted-foreground">Real-time messaging, reimagined</span>
+              <span className="text-sm font-medium text-muted-foreground">Quantum-secure relay mesh for modern teams</span>
             </motion.div>
 
             {/* Main heading */}
             <motion.h1 variants={item} className="text-4xl sm:text-5xl lg:text-7xl font-display font-bold mb-6 leading-tight tracking-tight">
-              Connect instantly with{" "}
+              Quantum-secure{" "}
               <span className="gradient-text glow-text">RelayBoy</span>
             </motion.h1>
 
             <motion.p variants={item} className="text-lg sm:text-xl text-muted-foreground mb-10 max-w-xl mx-auto leading-relaxed">
-              A beautifully crafted chat experience. Fast, secure, and designed
-              for the way you communicate in the digital age.
+              A stunning dark UI for secure, low-latency chat with quantum-ready
+              privacy layers and a relay-first architecture.
             </motion.p>
 
             {/* CTA Buttons */}
@@ -85,14 +85,14 @@ export default function Index() {
             {/* Feature cards */}
             <motion.div variants={container} className="grid sm:grid-cols-3 gap-6 max-w-4xl mx-auto">
               {[
-                { icon: Zap, title: "Lightning Fast", desc: "Real-time WebSocket messaging with zero lag" },
-                { icon: Users, title: "Live Presence", desc: "See who's online and available to chat" },
-                { icon: Shield, title: "Secure & Private", desc: "End-to-end encrypted conversations" }
+                { icon: Zap, title: "Quantum Fast", desc: "Optimized relay routing with ultra-low latency" },
+                { icon: Users, title: "Live Presence", desc: "Presence signals and verified identity states" },
+                { icon: Shield, title: "Post-Quantum Ready", desc: "Hybrid encryption with forward secrecy" }
               ].map((feature, i) => (
                 <motion.div
                   key={i}
                   variants={item}
-                  className="glass-card rounded-3xl p-6 text-left border border-white/5 hover:border-primary/30 transition-colors group"
+                  className="glass-card quantum-card rounded-3xl p-6 text-left border border-white/5 hover:border-primary/30 transition-colors group"
                 >
                   <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                     <feature.icon className="w-6 h-6 text-primary" />
@@ -108,11 +108,10 @@ export default function Index() {
         {/* Footer */}
         <footer className="py-8 text-center border-t border-white/5">
           <p className="text-xs text-muted-foreground/40 font-medium">
-            Built with ❤️ for the next generation of chat
+            Built with care for the next generation of secure chat
           </p>
         </footer>
       </div>
     </PageTransition>
   );
 }
-

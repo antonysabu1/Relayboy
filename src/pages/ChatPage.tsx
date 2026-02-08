@@ -93,7 +93,7 @@ export default function ChatPage() {
               <h1 className="text-2xl font-display font-bold gradient-text">RelayBoy</h1>
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 rounded-full bg-online animate-pulse" />
-                <span className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground">Network Active</span>
+                <span className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground">Quantum Link Active</span>
               </div>
             </div>
           </div>
@@ -114,7 +114,7 @@ export default function ChatPage() {
         {/* Main Content */}
         <div className="flex-1 flex overflow-hidden relative z-10">
           {/* Users Sidebar */}
-          <aside className="w-80 shrink-0 border-r border-white/5 glass-card hidden md:flex flex-col m-4 rounded-[2rem] shadow-2xl">
+          <aside className="w-80 shrink-0 border-r border-white/5 glass-card quantum-card hidden md:flex flex-col m-4 rounded-[2rem] shadow-2xl">
             <div className="p-6">
               <div className="relative mb-6">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -180,7 +180,7 @@ export default function ChatPage() {
           </aside>
 
           {/* Chat Area */}
-          <main className="flex-1 flex flex-col min-w-0 m-4 md:ml-0 overflow-hidden glass-card rounded-[2rem] shadow-2xl border border-white/5">
+          <main className="flex-1 flex flex-col min-w-0 m-4 md:ml-0 overflow-hidden glass-card quantum-card rounded-[2rem] shadow-2xl border border-white/5">
             {currentChat ? (
               <div className="flex flex-col h-full bg-black/20">
                 {/* Chat Header */}
@@ -213,7 +213,7 @@ export default function ChatPage() {
                       >
                         <MessageSquare className="w-10 h-10 text-primary" />
                       </motion.div>
-                      <h3 className="text-xl font-bold mb-2">Private Encryption Enabled</h3>
+                      <h3 className="text-xl font-bold mb-2">Quantum Encryption Enabled</h3>
                       <p className="text-sm text-muted-foreground max-w-xs px-4">
                         Messages sent to <span className="text-primary font-bold">@{currentChat}</span> are end-to-end encrypted and visible only to you.
                       </p>
@@ -265,9 +265,9 @@ export default function ChatPage() {
                     <Sparkles className="w-4 h-4 text-white" />
                   </motion.div>
                 </motion.div>
-                <h2 className="text-3xl font-display font-bold mb-3 tracking-tight">Your Digital Sanctuary</h2>
+                <h2 className="text-3xl font-display font-bold mb-3 tracking-tight">Quantum Secure Channel</h2>
                 <p className="text-muted-foreground max-w-sm mb-8 leading-relaxed">
-                  Connect with your friends in a space designed for focus, privacy, and smooth interaction.
+                  Connect with your team in a space built for privacy, relay speed, and zero-trust collaboration.
                 </p>
                 <div className="grid grid-cols-2 gap-3 w-full max-w-md">
                   <div className="p-4 rounded-2xl bg-white/5 border border-white/5 text-left">

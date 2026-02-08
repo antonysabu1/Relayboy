@@ -1,79 +1,268 @@
 <!DOCTYPE html>
 <html lang="en">
-
-<head>
-    <meta charset="UTF-8">
-    <title>Verify OTP</title>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>RelayBoy - Verify OTP</title>
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            background: #0f172a;
-            color: white;
-            display: flex;
-            height: 100vh;
-            justify-content: center;
-            align-items: center;
-        }
+      :root {
+        --bg: #070b14;
+        --fg: #f0f5ff;
+        --muted: #9aa6bf;
+        --primary: #2dd4bf;
+        --secondary: #38bdf8;
+        --accent: #22c55e;
+        --danger: #ef4444;
+        --glass: rgba(12, 16, 26, 0.7);
+        --glass-border: rgba(255, 255, 255, 0.08);
+      }
 
-        .box {
-            background: #020617;
-            padding: 30px;
-            border-radius: 10px;
-            width: 320px;
-        }
+      * { box-sizing: border-box; }
+      html, body { height: 100%; }
+      body {
+        margin: 0;
+        font-family: "Sora", sans-serif;
+        color: var(--fg);
+        background:
+          radial-gradient(1000px 800px at 10% 10%, rgba(45, 212, 191, 0.15), transparent),
+          radial-gradient(900px 700px at 90% 20%, rgba(56, 189, 248, 0.15), transparent),
+          radial-gradient(1100px 800px at 50% 90%, rgba(34, 197, 94, 0.12), transparent),
+          #05070d;
+        display: grid;
+        place-items: center;
+        overflow: hidden;
+        padding: 32px 16px;
+      }
 
-        input,
-        button {
-            width: 100%;
-            padding: 10px;
-            margin-top: 10px;
-        }
+      .card {
+        position: relative;
+        width: min(520px, 92vw);
+        padding: 32px;
+        border-radius: 28px;
+        background: var(--glass);
+        border: 1px solid var(--glass-border);
+        backdrop-filter: blur(18px);
+        box-shadow: 0 25px 60px rgba(0, 0, 0, 0.45);
+      }
 
-        button {
-            background: #2563eb;
-            color: white;
-            border: none;
-            cursor: pointer;
-        }
+      .logo {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 18px;
+      }
+      .logo-badge {
+        width: 52px;
+        height: 52px;
+        border-radius: 16px;
+        background: linear-gradient(135deg, var(--primary), var(--secondary));
+        display: grid;
+        place-items: center;
+        box-shadow: 0 0 28px rgba(45, 212, 191, 0.35);
+        font-family: "Space Grotesk", sans-serif;
+        font-weight: 700;
+        color: #051117;
+      }
+      .title {
+        font-family: "Space Grotesk", sans-serif;
+        font-size: 28px;
+        margin: 0 0 6px 0;
+      }
+      .subtitle {
+        margin: 0;
+        color: var(--muted);
+        font-size: 14px;
+      }
+
+      .email-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 12px 16px;
+        border-radius: 16px;
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        margin: 20px 0;
+      }
+      .email-icon {
+        width: 36px;
+        height: 36px;
+        border-radius: 12px;
+        display: grid;
+        place-items: center;
+        background: linear-gradient(135deg, var(--primary), var(--accent));
+        color: #051117;
+        font-weight: 700;
+      }
+      .email-text { font-weight: 600; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .timer {
+        margin-left: auto;
+        font-size: 12px;
+        font-weight: 700;
+        color: var(--primary);
+      }
+
+      .otp {
+        display: grid;
+        grid-template-columns: repeat(6, 1fr);
+        gap: 10px;
+        margin: 22px 0 12px;
+      }
+      .otp input {
+        width: 100%;
+        height: 54px;
+        border-radius: 16px;
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        color: var(--fg);
+        text-align: center;
+        font-size: 20px;
+        font-weight: 600;
+        outline: none;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+      }
+      .otp input:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(45, 212, 191, 0.18);
+        transform: translateY(-1px);
+      }
+
+      .btn {
+        width: 100%;
+        height: 54px;
+        border: none;
+        border-radius: 18px;
+        font-weight: 700;
+        font-size: 15px;
+        color: #051117;
+        cursor: pointer;
+        background: linear-gradient(135deg, var(--primary), var(--secondary));
+        box-shadow: 0 10px 30px rgba(45, 212, 191, 0.3);
+        transition: transform 0.2s ease, opacity 0.2s ease;
+      }
+      .btn:hover { transform: translateY(-1px); }
+      .btn:disabled { opacity: 0.7; cursor: not-allowed; }
+
+      .hint {
+        margin-top: 12px;
+        font-size: 12px;
+        color: var(--muted);
+        text-align: center;
+      }
+      .error {
+        margin-top: 12px;
+        color: var(--danger);
+        font-size: 13px;
+        font-weight: 600;
+        text-align: center;
+      }
+      .back {
+        display: block;
+        margin-top: 18px;
+        text-align: center;
+        color: var(--muted);
+        text-decoration: none;
+        font-size: 13px;
+      }
+      .back:hover { color: white; }
     </style>
-</head>
+  </head>
+  <body>
+    <div class="card">
+      <div class="logo">
+        <div class="logo-badge">RB</div>
+        <div>
+          <h1 class="title">Verify Your Email</h1>
+          <p class="subtitle">Enter the 6-digit code we sent to you</p>
+        </div>
+      </div>
 
-<body>
+      <div class="email-row">
+        <div class="email-icon">ID</div>
+        <div class="email-text" id="emailText">your email</div>
+        <div class="timer" id="timer">05:00</div>
+      </div>
 
-    <div class="box">
-        <h2>OTP Verification</h2>
-        <input id="otp" placeholder="Enter OTP" />
-        <button onclick="verifyOTP()">Verify</button>
-        <p id="msg"></p>
+      <form id="otpForm">
+        <div class="otp" id="otpInputs">
+          <input inputmode="numeric" maxlength="1" />
+          <input inputmode="numeric" maxlength="1" />
+          <input inputmode="numeric" maxlength="1" />
+          <input inputmode="numeric" maxlength="1" />
+          <input inputmode="numeric" maxlength="1" />
+          <input inputmode="numeric" maxlength="1" />
+        </div>
+
+        <button class="btn" id="verifyBtn" type="submit">Verify and Continue</button>
+      </form>
+
+      <div class="hint">Did not get the code? Check spam or try again from the sign-up screen.</div>
+      <div class="error" id="errorMsg"></div>
+      <a class="back" href="/login">Back to sign in</a>
     </div>
 
     <script>
-        const email = sessionStorage.getItem("register_email");
+      const email = sessionStorage.getItem("register_email");
+      if (!email) window.location = "/login";
 
-        if (!email) {
-            window.location = "/login";
+      const emailText = document.getElementById("emailText");
+      if (email) emailText.textContent = email;
+
+      const inputs = Array.from(document.querySelectorAll("#otpInputs input"));
+      const errorMsg = document.getElementById("errorMsg");
+      const verifyBtn = document.getElementById("verifyBtn");
+
+      inputs.forEach((input, idx) => {
+        input.addEventListener("input", (e) => {
+          const value = e.target.value.replace(/\D/g, "");
+          e.target.value = value;
+          if (value && idx < inputs.length - 1) inputs[idx + 1].focus();
+        });
+
+        input.addEventListener("keydown", (e) => {
+          if (e.key === "Backspace" && !input.value && idx > 0) inputs[idx - 1].focus();
+        });
+      });
+
+      document.getElementById("otpForm").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        errorMsg.textContent = "";
+
+        const otp = inputs.map(i => i.value).join("");
+        if (otp.length !== 6) {
+          errorMsg.textContent = "Enter the 6-digit code.";
+          return;
         }
 
-        async function verifyOTP() {
-            const otp = document.getElementById("otp").value;
+        verifyBtn.disabled = true;
 
-            const res = await fetch("/verify-register-otp", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ email, otp })
-            });
+        try {
+          const res = await fetch("/verify-register-otp", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email, otp })
+          });
 
-            const data = await res.json();
-
-            if (data.ok) {
-                sessionStorage.removeItem("register_email");
-                window.location = "/chat";
-            } else {
-                document.getElementById("msg").innerText = data.error;
-            }
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || "Verification failed");
+          sessionStorage.removeItem("register_email");
+          window.location = "/chat";
+        } catch (err) {
+          errorMsg.textContent = err.message || "Verification failed";
+        } finally {
+          verifyBtn.disabled = false;
         }
+      });
+
+      let secondsLeft = 300;
+      const timer = document.getElementById("timer");
+      setInterval(() => {
+        secondsLeft = Math.max(0, secondsLeft - 1);
+        const m = String(Math.floor(secondsLeft / 60)).padStart(2, "0");
+        const s = String(secondsLeft % 60).padStart(2, "0");
+        timer.textContent = `${m}:${s}`;
+      }, 1000);
     </script>
-
-</body>
-
+  </body>
 </html>
