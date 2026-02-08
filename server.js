@@ -17,6 +17,14 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// ---------------- Startup Checks ----------------
+const requiredEnv = ["SUPABASE_URL", "SUPABASE_ANON_KEY", "EMAIL_USER", "EMAIL_PASS", "REDIS_URL"];
+const missingEnv = requiredEnv.filter(env => !process.env[env]);
+if (missingEnv.length > 0) {
+  console.error("❌ Missing required environment variables:", missingEnv.join(", "));
+  if (process.env.NODE_ENV === "production") process.exit(1);
+}
+
 // ---------------- dirname ----------------
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -70,64 +78,103 @@ app.get("/chat", (req, res) => {
 // ---------------- REGISTER (SEND OTP) ----------------
 app.post("/register", async (req, res) => {
   const { email, username, password } = req.body;
+  console.log(`[Registration] Attempt for user: ${username}, email: ${email}`);
 
-  if (!email || !username || !password)
-    return res.status(400).json({ error: "Missing fields" });
+  try {
+    if (!email || !username || !password) {
+      console.warn("[Registration] Missing fields");
+      return res.status(400).json({ error: "Missing fields" });
+    }
 
-  if (!isPasswordStrong(password))
-    return res.status(400).json({ error: "Weak password" });
+    if (!isPasswordStrong(password)) {
+      console.warn("[Registration] Weak password");
+      return res.status(400).json({ error: "Weak password" });
+    }
 
-  const { data } = await supabase
-    .from("users")
-    .select("email, username")
-    .or(`email.eq.${email},username.eq.${username}`);
+    console.log("[Registration] Checking for existing user...");
+    const { data, error: fetchError } = await supabase
+      .from("users")
+      .select("email, username")
+      .or(`email.eq.${email},username.eq.${username}`);
 
-  if (data?.length)
-    return res.status(400).json({ error: "User already exists" });
+    if (fetchError) {
+      console.error("[Registration] Supabase fetch error:", fetchError);
+      throw fetchError;
+    }
 
-  const otp = generateOTP();
-  const password_hash = bcrypt.hashSync(password, 10);
+    if (data?.length) {
+      console.warn("[Registration] User already exists");
+      return res.status(400).json({ error: "User already exists" });
+    }
 
-  await redis.setEx(
-    `register:${email}`,
-    300,
-    JSON.stringify({ email, username, password_hash, otp })
-  );
+    const otp = generateOTP();
+    const password_hash = bcrypt.hashSync(password, 10);
 
-  await transporter.sendMail({
-    from: process.env.EMAIL_USER,
-    to: email,
-    subject: "RelayBoy Email Verification",
-    text: `Your OTP is ${otp}. Valid for 5 minutes.`
-  });
+    console.log("[Registration] Saving OTP to Redis...");
+    await redis.setEx(
+      `register:${email}`,
+      300,
+      JSON.stringify({ email, username, password_hash, otp })
+    );
 
-  res.json({ ok: true });
+    console.log(`[Registration] Sending OTP email to ${email}...`);
+    await transporter.sendMail({
+      from: process.env.EMAIL_USER,
+      to: email,
+      subject: "RelayBoy Email Verification",
+      text: `Your OTP is ${otp}. Valid for 5 minutes.`
+    });
+
+    console.log("[Registration] OTP sent successfully");
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("[Registration] Critical Error:", err);
+    res.status(500).json({ error: "Registration failed. Please try again later.", details: err.message });
+  }
 });
 
 // ---------------- VERIFY OTP ----------------
 app.post("/verify-register-otp", async (req, res) => {
   const { email, otp } = req.body;
+  console.log(`[Verify OTP] Attempt for email: ${email}`);
 
-  const cached = await redis.get(`register:${email}`);
-  if (!cached) return res.status(400).json({ error: "OTP expired" });
+  try {
+    const cached = await redis.get(`register:${email}`);
+    if (!cached) {
+      console.warn("[Verify OTP] OTP expired or not found");
+      return res.status(400).json({ error: "OTP expired" });
+    }
 
-  const pending = JSON.parse(cached);
-  if (pending.otp !== otp)
-    return res.status(400).json({ error: "Invalid OTP" });
+    const pending = JSON.parse(cached);
+    if (pending.otp !== otp) {
+      console.warn("[Verify OTP] Invalid OTP entered");
+      return res.status(400).json({ error: "Invalid OTP" });
+    }
 
-  await supabase.from("users").insert([{
-    email: pending.email,
-    username: pending.username,
-    password_hash: pending.password_hash,
-    is_verified: true
-  }]);
+    console.log("[Verify OTP] Inserting user into Supabase...");
+    const { error: insertError } = await supabase.from("users").insert([{
+      email: pending.email,
+      username: pending.username,
+      password_hash: pending.password_hash,
+      is_verified: true
+    }]);
 
-  await redis.del(`register:${email}`);
+    if (insertError) {
+      console.error("[Verify OTP] Supabase insert error:", insertError);
+      throw insertError;
+    }
 
-  req.session.authenticated = true;
-  req.session.username = pending.username;
+    await redis.del(`register:${email}`);
 
-  res.json({ ok: true });
+    req.session.authenticated = true;
+    req.session.username = pending.username;
+
+    console.log("[Verify OTP] Success");
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("[Verify OTP] Critical Error:", err);
+    res.status(500).json({ error: "Verification failed. Please try again later.", details: err.message });
+  }
 });
 
 // ---------------- LOGIN ----------------
