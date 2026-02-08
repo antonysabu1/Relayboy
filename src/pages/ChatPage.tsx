@@ -16,7 +16,7 @@ interface ChatHistory {
 }
 
 export default function ChatPage() {
-  const { status, username, users, error, incomingMessage, connect, sendMessage } = useWebSocket();
+  const { status, username, users, error, incomingMessage, history, connect, sendMessage, getHistory } = useWebSocket();
   const [currentChat, setCurrentChat] = useState<string | null>(null);
   const [chatHistory, setChatHistory] = useState<ChatHistory>({});
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -34,6 +34,16 @@ export default function ChatPage() {
       }));
     }
   }, [incomingMessage]);
+
+  // Handle history updates
+  useEffect(() => {
+    if (history) {
+      setChatHistory((prev) => ({
+        ...prev,
+        [history.with]: history.messages,
+      }));
+    }
+  }, [history]);
 
   // Auto-scroll on new messages
   useEffect(() => {
@@ -59,9 +69,7 @@ export default function ChatPage() {
 
   const openChat = (user: string) => {
     setCurrentChat(user);
-    if (!chatHistory[user]) {
-      setChatHistory((prev) => ({ ...prev, [user]: [] }));
-    }
+    getHistory(user);
   };
 
   const otherUsers = users.filter((u) => u !== username);

@@ -3,363 +3,106 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RelayBoy - Login</title>
+    <title>RelayBoy Login</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-                'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-                sans-serif;
-            -webkit-font-smoothing: antialiased;
-            -moz-osx-font-smoothing: grayscale;
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-            min-height: 100vh;
+            font-family: Arial, sans-serif;
+            background: #020617;
+            color: white;
             display: flex;
-            align-items: center;
             justify-content: center;
-            padding: 20px;
+            align-items: center;
+            height: 100vh;
         }
 
-        .container {
+        .box {
+            background: #0f172a;
+            padding: 30px;
+            border-radius: 10px;
+            width: 350px;
+        }
+
+        input,
+        button {
             width: 100%;
-            max-width: 400px;
-            background: #0f3460;
-            border-radius: 12px;
-            padding: 40px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
-            border: 1px solid #233a5e;
-        }
-
-        .header {
-            text-align: center;
-            margin-bottom: 40px;
-        }
-
-        .logo {
-            font-size: 32px;
-            font-weight: 700;
-            color: #ff6b6b;
-            margin-bottom: 10px;
-        }
-
-        .subtitle {
-            color: #a0a0a0;
-            font-size: 14px;
-        }
-
-        .form-group {
-            margin-bottom: 20px;
-        }
-
-        label {
-            display: block;
-            color: #e0e0e0;
-            font-size: 14px;
-            font-weight: 500;
-            margin-bottom: 8px;
-        }
-
-        input {
-            width: 100%;
-            padding: 12px;
-            background: #1a2d47;
-            border: 1px solid #233a5e;
-            border-radius: 6px;
-            color: #e0e0e0;
-            font-size: 14px;
-            transition: border-color 0.3s;
-        }
-
-        input:focus {
-            outline: none;
-            border-color: #ff6b6b;
-            background: #233a5e;
-        }
-
-        .button-group {
-            display: flex;
-            gap: 10px;
-            margin-top: 30px;
+            padding: 10px;
+            margin-top: 10px;
         }
 
         button {
-            flex: 1;
-            padding: 12px;
-            border: none;
-            border-radius: 6px;
-            font-size: 14px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-
-        .btn-login {
-            background: #ff6b6b;
+            background: #2563eb;
             color: white;
-        }
-
-        .btn-login:hover {
-            background: #ff5252;
-            transform: translateY(-2px);
-            box-shadow: 0 10px 20px rgba(255, 107, 107, 0.3);
-        }
-
-        .btn-register {
-            background: #233a5e;
-            color: #ff6b6b;
-            border: 1px solid #ff6b6b;
-        }
-
-        .btn-register:hover {
-            background: #2a4a70;
-        }
-
-        .error {
-            color: #ff6b6b;
-            font-size: 13px;
-            margin-top: 8px;
-            min-height: 20px;
-        }
-
-        .loading {
-            opacity: 0.6;
-            pointer-events: none;
-        }
-
-        .form-toggle {
-            text-align: center;
-            margin-top: 20px;
-            font-size: 13px;
-            color: #a0a0a0;
-        }
-
-        .form-toggle a {
-            color: #ff6b6b;
+            border: none;
             cursor: pointer;
-            text-decoration: none;
         }
 
-        .form-toggle a:hover {
-            text-decoration: underline;
-        }
-
-        .hidden {
-            display: none;
-        }
-
-        /* Password Strength Styles */
-        .strength-meter {
-            height: 4px;
-            width: 100%;
-            background: #1a2d47;
-            margin-top: 8px;
-            border-radius: 2px;
-            overflow: hidden;
-        }
-
-        .strength-bar {
-            height: 100%;
-            width: 0%;
-            transition: all 0.3s;
-        }
-
-        .strength-weak {
-            background: #ff6b6b;
-            width: 25%;
-        }
-
-        .strength-fair {
-            background: #ffa502;
-            width: 50%;
-        }
-
-        .strength-good {
-            background: #2ed573;
-            width: 75%;
-        }
-
-        .strength-strong {
-            background: #1e90ff;
-            width: 100%;
-        }
-
-        .password-requirements {
-            list-style: none;
-            margin-top: 10px;
-            font-size: 12px;
-            color: #a0a0a0;
-        }
-
-        .requirement {
-            display: flex;
-            align-items: center;
-            gap: 5px;
-            margin-bottom: 4px;
-        }
-
-        .requirement::before {
-            content: '○';
-            color: #555;
-        }
-
-        .requirement.met {
-            color: #2ed573;
-        }
-
-        .requirement.met::before {
-            content: '●';
+        hr {
+            margin: 20px 0;
         }
     </style>
 </head>
 
 <body>
-    <div class="container">
-        <div class="header">
-            <div class="logo">🔗 RelayBoy</div>
-            <div class="subtitle">Real-time Chat Application</div>
-        </div>
 
-        <!-- Login Form -->
-        <form id="loginForm" class="hidden">
-            <div class="form-group">
-                <label for="loginEmail">Email or Username</label>
-                <input type="text" id="loginEmail" placeholder="Enter email or username" required>
-            </div>
-            <div class="form-group">
-                <label for="loginPassword">Password</label>
-                <input type="password" id="loginPassword" placeholder="Enter password" required>
-            </div>
-            <div class="error" id="loginError"></div>
-            <div class="button-group">
-                <button type="submit" class="btn-login">Login</button>
-                <button type="button" class="btn-register" onclick="toggleForm()">Register</button>
-            </div>
-        </form>
+    <div class="box">
+        <h2>Login</h2>
+        <input id="login_user" placeholder="Email or Username">
+        <input id="login_pass" type="password" placeholder="Password">
+        <button onclick="login()">Login</button>
 
-        <!-- Register Form -->
-        <form id="registerForm">
-            <div class="form-group">
-                <label for="regEmail">Email</label>
-                <input type="email" id="regEmail" placeholder="Enter email" required>
-            </div>
-            <div class="form-group">
-                <label for="regUsername">Username</label>
-                <input type="text" id="regUsername" placeholder="Choose username" required>
-            </div>
-            <div class="form-group">
-                <label for="regPassword">Password</label>
-                <input type="password" id="regPassword" placeholder="Create password" required>
-                <div class="strength-meter">
-                    <div id="strengthBar" class="strength-bar"></div>
-                </div>
-                <ul class="password-requirements">
-                    <li class="requirement" id="req-length">Min 10 characters</li>
-                    <li class="requirement" id="req-upper">One uppercase</li>
-                    <li class="requirement" id="req-lower">One lowercase</li>
-                    <li class="requirement" id="req-number">One number</li>
-                    <li class="requirement" id="req-special">One special character (!@#$%^&*)</li>
-                </ul>
-            </div>
-            <div class="error" id="registerError"></div>
-            <div class="button-group">
-                <button type="submit" class="btn-login">Register</button>
-                <button type="button" class="btn-register" onclick="toggleForm()">Login</button>
-            </div>
-        </form>
+        <hr>
+
+        <h2>Register</h2>
+        <input id="reg_email" placeholder="Email">
+        <input id="reg_user" placeholder="Username">
+        <input id="reg_pass" type="password" placeholder="Password">
+        <button onclick="register()">Register</button>
+
+        <p id="msg"></p>
     </div>
 
     <script>
-        let currentMode = 'register';
+        async function login() {
+            const emailOrUsername = login_user.value;
+            const password = login_pass.value;
 
-        function toggleForm() {
-            currentMode = currentMode === 'login' ? 'register' : 'login';
-            document.getElementById('loginForm').classList.toggle('hidden');
-            document.getElementById('registerForm').classList.toggle('hidden');
+            const res = await fetch("/login", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ emailOrUsername, password })
+            });
+
+            const data = await res.json();
+
+            if (data.ok) {
+                window.location = "/chat";
+            } else {
+                msg.innerText = data.error;
+            }
         }
 
-        const regPasswordInput = document.getElementById('regPassword');
-        const requirements = {
-            length: p => p.length >= 10,
-            upper: p => /[A-Z]/.test(p),
-            lower: p => /[a-z]/.test(p),
-            number: p => /[0-9]/.test(p),
-            special: p => /[!@#$%^&*(),.?":{}|<>]/.test(p)
-        };
+        async function register() {
+            const email = reg_email.value;
+            const username = reg_user.value;
+            const password = reg_pass.value;
 
-        regPasswordInput.addEventListener('input', () => {
-            const password = regPasswordInput.value;
-            let metCount = 0;
+            const res = await fetch("/register", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email, username, password })
+            });
 
-            for (const [key, test] of Object.entries(requirements)) {
-                const isMet = test(password);
-                document.getElementById(`req-${key}`).classList.toggle('met', isMet);
-                if (isMet) metCount++;
-            }
+            const data = await res.json();
 
-            const bar = document.getElementById('strengthBar');
-            bar.className = 'strength-bar';
-            if (metCount > 0) {
-                if (metCount <= 2) bar.classList.add('strength-weak');
-                else if (metCount === 3) bar.classList.add('strength-fair');
-                else if (metCount === 4) bar.classList.add('strength-good');
-                else if (metCount === 5) bar.classList.add('strength-strong');
+            if (data.ok) {
+                sessionStorage.setItem("register_email", email);
+                window.location = "/verify-otp.html";
             } else {
-                bar.style.width = '0%';
+                msg.innerText = data.error;
             }
-        });
-
-        document.getElementById('registerForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const email = document.getElementById('regEmail').value;
-            const username = document.getElementById('regUsername').value;
-            const password = document.getElementById('regPassword').value;
-
-            // Final client-side check
-            const isStrong = Object.values(requirements).every(test => test(password));
-            if (!isStrong) {
-                document.getElementById('registerError').textContent = 'Please meet all password requirements';
-                return;
-            }
-
-            try {
-                const res = await fetch('/register', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email, username, password })
-                });
-                const data = await res.json();
-                if (!res.ok) throw new Error(data.error);
-                window.location.href = '/chat';
-            } catch (err) {
-                document.getElementById('registerError').textContent = err.message || 'Registration failed';
-            }
-        });
-
-        document.getElementById('loginForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const emailOrUsername = document.getElementById('loginEmail').value;
-            const password = document.getElementById('loginPassword').value;
-
-            try {
-                const res = await fetch('/login', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ emailOrUsername, password })
-                });
-                const data = await res.json();
-                if (!res.ok) throw new Error(data.error);
-                window.location.href = '/chat';
-            } catch (err) {
-                document.getElementById('loginError').textContent = err.message || 'Login failed';
-            }
-        });
+        }
     </script>
+
 </body>
 
 </html>

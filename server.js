@@ -5,30 +5,23 @@ import path from "path";
 import bcrypt from "bcryptjs";
 import cookieParser from "cookie-parser";
 import session from "express-session";
-import { supabase } from "./db.js";
+import dotenv from "dotenv";
 import { fileURLToPath } from "url";
+
+import { supabase } from "./db.js";
+import redis from "./redisClient.js";
+import transporter from "./nodemailer.js";
+
+dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Get __dirname in ES modules
+// ---------------- dirname ----------------
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Password Policy Validation (NIST/OWASP inspired)
-function isPasswordStrong(password) {
-  if (!password || password.length < 10) return false;
-  const hasUpper = /[A-Z]/.test(password);
-  const hasLower = /[a-z]/.test(password);
-  const hasNumber = /[0-9]/.test(password);
-  const hasSpecial = /[!@#$%^&*(),.?":{}|<>]/.test(password);
-  return hasUpper && hasLower && hasNumber && hasSpecial;
-}
-
-// -------------------- Supabase Setup --------------------
-// (Supabase is initialized in db.js)
-
-// Middleware
+// ---------------- Middleware ----------------
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
@@ -40,222 +33,223 @@ const sessionParser = session({
 });
 app.use(sessionParser);
 
-// Serve public assets
-app.use('/static', express.static(path.join(__dirname, 'public')));
+app.use("/static", express.static(path.join(__dirname, "public")));
 
-// Routes
-app.get('/', (req, res) => res.redirect('/login'));
+// ---------------- Utils ----------------
+function generateOTP() {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+}
 
-app.get('/login', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'login.html'));
+function isPasswordStrong(password) {
+  return (
+    password &&
+    password.length >= 10 &&
+    /[A-Z]/.test(password) &&
+    /[a-z]/.test(password) &&
+    /[0-9]/.test(password) &&
+    /[!@#$%^&*(),.?":{}|<>]/.test(password)
+  );
+}
+
+// ---------------- Pages ----------------
+app.get("/", (_, res) => res.redirect("/login"));
+
+app.get("/login", (_, res) =>
+  res.sendFile(path.join(__dirname, "public/login.html"))
+);
+
+app.get("/verify-otp.html", (_, res) =>
+  res.sendFile(path.join(__dirname, "public/verify-otp.html"))
+);
+
+app.get("/chat", (req, res) => {
+  if (!req.session.authenticated) return res.redirect("/login");
+  res.sendFile(path.join(__dirname, "public/index.html"));
 });
 
-app.get('/chat', (req, res) => {
-  if (!req.session || !req.session.authenticated) return res.redirect('/login');
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
-
-// -------------------- REGISTER --------------------
-app.post('/register', async (req, res) => {
+// ---------------- REGISTER (SEND OTP) ----------------
+app.post("/register", async (req, res) => {
   const { email, username, password } = req.body;
-  if (!email || !username || !password) return res.status(400).json({ error: 'Missing fields' });
 
-  if (!isPasswordStrong(password)) {
-    return res.status(400).json({ error: 'Password does not meet security requirements' });
-  }
+  if (!email || !username || !password)
+    return res.status(400).json({ error: "Missing fields" });
 
-  try {
-    // Check if user exists
-    const { data: existingUsers, error: checkError } = await supabase
-      .from('users')
-      .select('email, username')
-      .or(`email.eq.${email},username.eq.${username}`);
+  if (!isPasswordStrong(password))
+    return res.status(400).json({ error: "Weak password" });
 
-    if (checkError) throw checkError;
+  const { data } = await supabase
+    .from("users")
+    .select("email, username")
+    .or(`email.eq.${email},username.eq.${username}`);
 
-    if (existingUsers && existingUsers.length > 0) {
-      if (existingUsers.some(u => u.email === email)) return res.status(400).json({ error: 'Email taken' });
-      if (existingUsers.some(u => u.username === username)) return res.status(400).json({ error: 'Username taken' });
-    }
+  if (data?.length)
+    return res.status(400).json({ error: "User already exists" });
 
-    const hashed = bcrypt.hashSync(password, 10);
+  const otp = generateOTP();
+  const password_hash = bcrypt.hashSync(password, 10);
 
-    const { error: insertError } = await supabase
-      .from('users')
-      .insert([
-        {
-          username,
-          email,
-          password_hash: hashed,
-          // created_at defaults to now() in SQL
-          last_login: null,
-          is_verified: false
-        }
-      ]);
+  await redis.setEx(
+    `register:${email}`,
+    300,
+    JSON.stringify({ email, username, password_hash, otp })
+  );
 
-    if (insertError) throw insertError;
+  await transporter.sendMail({
+    from: process.env.EMAIL_USER,
+    to: email,
+    subject: "RelayBoy Email Verification",
+    text: `Your OTP is ${otp}. Valid for 5 minutes.`
+  });
 
-    console.log("✅ User saved:", username);
-
-    req.session.authenticated = true;
-    req.session.username = username;
-    res.json({ ok: true });
-  } catch (err) {
-    console.error("❌ Register error:", err);
-    res.status(500).json({ error: 'Server error: ' + err.message });
-  }
+  res.json({ ok: true });
 });
 
-// -------------------- LOGIN --------------------
-app.post('/login', async (req, res) => {
+// ---------------- VERIFY OTP ----------------
+app.post("/verify-register-otp", async (req, res) => {
+  const { email, otp } = req.body;
+
+  const cached = await redis.get(`register:${email}`);
+  if (!cached) return res.status(400).json({ error: "OTP expired" });
+
+  const pending = JSON.parse(cached);
+  if (pending.otp !== otp)
+    return res.status(400).json({ error: "Invalid OTP" });
+
+  await supabase.from("users").insert([{
+    email: pending.email,
+    username: pending.username,
+    password_hash: pending.password_hash,
+    is_verified: true
+  }]);
+
+  await redis.del(`register:${email}`);
+
+  req.session.authenticated = true;
+  req.session.username = pending.username;
+
+  res.json({ ok: true });
+});
+
+// ---------------- LOGIN ----------------
+app.post("/login", async (req, res) => {
   const { emailOrUsername, password } = req.body;
-  if (!emailOrUsername || !password) return res.status(400).json({ error: 'Missing fields' });
 
-  try {
-    const { data: users, error: fetchError } = await supabase
-      .from('users')
-      .select('*')
-      .or(`username.eq.${emailOrUsername},email.eq.${emailOrUsername}`)
-      .limit(1);
+  const { data } = await supabase
+    .from("users")
+    .select("*")
+    .or(`email.eq.${emailOrUsername},username.eq.${emailOrUsername}`)
+    .limit(1);
 
-    if (fetchError) throw fetchError;
-    const user = users && users.length > 0 ? users[0] : null;
+  const user = data?.[0];
+  if (!user || !bcrypt.compareSync(password, user.password_hash))
+    return res.status(400).json({ error: "Invalid credentials" });
 
-    if (!user) return res.status(400).json({ error: 'Invalid credentials' });
+  req.session.authenticated = true;
+  req.session.username = user.username;
 
-    if (!bcrypt.compareSync(password, user.password_hash)) {
-      return res.status(400).json({ error: 'Invalid credentials' });
-    }
-
-    // Update last_login
-    await supabase.from('users').update({ last_login: new Date() }).eq('id', user.id);
-    console.log("✅ User logged in:", user.username);
-
-    req.session.authenticated = true;
-    req.session.username = user.username;
-    res.json({ ok: true });
-  } catch (err) {
-    console.error("❌ Login error:", err);
-    res.status(500).json({ error: 'Server error: ' + err.message });
-  }
+  res.json({ ok: true });
 });
 
-app.post('/logout', (req, res) => {
+// ---------------- LOGOUT ----------------
+app.post("/logout", (req, res) => {
   req.session.destroy(() => res.json({ ok: true }));
 });
 
-// -------------------- WebSocket --------------------
+// ---------------- WEBSOCKET ----------------
 const server = http.createServer(app);
 const wss = new WebSocketServer({ noServer: true });
-
-// Map username -> ws
 const clients = new Map();
 
 function broadcastUsers() {
   const users = Array.from(clients.keys());
-  const data = JSON.stringify({ type: "users", users });
-  for (const ws of clients.values()) {
-    if (ws.readyState === 1) ws.send(data);
-  }
+  const msg = JSON.stringify({ type: "users", users });
+  clients.forEach(client => {
+    if (client.readyState === 1) client.send(msg);
+  });
 }
 
-server.on('upgrade', (req, socket, head) => {
+server.on("upgrade", (req, socket, head) => {
   sessionParser(req, {}, () => {
-    if (!req.session || !req.session.authenticated) {
-      socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
-      socket.destroy();
-      return;
-    }
-    wss.handleUpgrade(req, socket, head, (ws) => {
-      wss.emit('connection', ws, req);
-    });
+    if (!req.session.authenticated) return socket.destroy();
+    wss.handleUpgrade(req, socket, head, ws =>
+      wss.emit("connection", ws, req)
+    );
   });
 });
 
-wss.on('connection', async (ws, req) => {
+wss.on("connection", async (ws, req) => {
   const username = req.session.username;
-  if (!username) {
-    ws.close();
-    return;
-  }
-
-  console.log(`${username} connected via websocket`);
   clients.set(username, ws);
 
-  if (ws.readyState === 1) {
-    ws.send(JSON.stringify({ type: 'connected', username }));
-  }
+  // Send initial connection confirmation
+  ws.send(JSON.stringify({ type: "connected", username }));
 
+  // Broadcast updated user list
   broadcastUsers();
 
-  // Load last 50 messages for this user
-  // Load last 50 messages for this user
-  const { data: messages, error: msgError } = await supabase
-    .from('messages')
-    .select('from, to, message, timestamp')
-    .or(`from.eq.${username},to.eq.${username}`)
-    .order('timestamp', { ascending: true }) // Get oldest first, but limit usually applies to top... wait, we want last 50.
-    // Actually, SQL standard is usually Sort desc limit 50 then reverse? Or just sort asc and take all?
-    // Let's assume we want the MOST RECENT 50 messages.
-    // So order by timestamp DESC, limit 50, then reverse.
-    // But the client expects them in chronological order.
-    // So:
-    .order('timestamp', { ascending: false })
-    .limit(50);
-
-  if (msgError) console.error("Error fetching history:", msgError);
-
-  // They effectively come out reversed (newest first), so we need to reverse them back for the client
-  const sortedMessages = messages ? messages.reverse() : [];
-
-
-
-  ws.on('message', async (data) => {
+  ws.on("message", async msg => {
     try {
-      const msg = JSON.parse(data);
-      if (msg.type === 'get_history') {
-        const targetUser = msg.to;
+      const data = JSON.parse(msg);
+      console.log(`📩 Received WS message: ${data.type} from ${username}`);
+
+      if (data.type === "message") {
+        // Save to Supabase
+        const { error: insertError } = await supabase.from("messages").insert([{
+          from: username,
+          to: data.to,
+          message: data.message
+        }]);
+
+        if (insertError) {
+          console.error("❌ Supabase INSERT error:", insertError);
+        } else {
+          console.log(`✅ Message saved from ${username} to ${data.to}`);
+        }
+
+        // Send to target
+        const target = clients.get(data.to);
+        if (target && target.readyState === 1) {
+          target.send(JSON.stringify({
+            type: "message",
+            from: username,
+            message: data.message,
+            timestamp: new Date().toLocaleTimeString()
+          }));
+        }
+      } else if (data.type === "get_history") {
+        console.log(`📜 Fetching history between ${username} and ${data.to}`);
+        // Fetch history between username and data.to
         const { data: history, error: historyError } = await supabase
-          .from('messages')
-          .select('from, to, message, timestamp')
-          .or(`and(from.eq.${username},to.eq.${targetUser}),and(from.eq.${targetUser},to.eq.${username})`)
-          .order('timestamp', { ascending: false })
-          .limit(50);
+          .from("messages")
+          .select("*")
+          .or(`and(from.eq."${username}",to.eq."${data.to}"),and(from.eq."${data.to}",to.eq."${username}")`)
+          .order("timestamp", { ascending: true });
 
         if (historyError) {
-          console.error("Error fetching history:", historyError);
-        } else {
-          const sortedHistory = history.reverse();
-          ws.send(JSON.stringify({ type: 'history', with: targetUser, messages: sortedHistory }));
+          console.error("❌ Supabase SELECT history error:", historyError);
         }
-      } else if (msg.type === 'message') {
-        const target = clients.get(msg.to);
-        const timestamp = new Date();
 
-        // Save message to Supabase
-        await supabase.from('messages').insert([
-          { from: username, to: msg.to, message: msg.message, timestamp }
-        ]);
-        console.log(`✅ Message saved from ${username} to ${msg.to}:`, msg.message);
-
-        // Send message to target if online
-        if (target && target.readyState === 1) {
-          target.send(JSON.stringify({ type: 'message', from: username, message: msg.message, timestamp: timestamp.toLocaleTimeString() }));
-        }
+        ws.send(JSON.stringify({
+          type: "history",
+          with: data.to,
+          messages: (history || []).map(m => ({
+            from: m.from,
+            message: m.message,
+            timestamp: m.timestamp
+          }))
+        }));
       }
     } catch (err) {
-      console.error('❌ Invalid message', err);
+      console.error("⚠️ WS Message Error:", err);
     }
   });
 
- ;
-   ws.on('close', () => {
+  ws.on("close", () => {
     clients.delete(username);
-    console.log(`${username} disconnected`);
     broadcastUsers();
   });
 });
 
-server.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+server.listen(PORT, () =>
+  console.log(`✅ Server running on port ${PORT}`)
+);
