@@ -1,4 +1,5 @@
 import nodemailer from "nodemailer";
+import dns from "dns";
 
 const transporter = nodemailer.createTransport({
     host: "smtp.gmail.com",
@@ -8,6 +9,10 @@ const transporter = nodemailer.createTransport({
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS,
     },
+    // Explicitly force IPv4 to avoid ENETUNREACH issues on Render
+    lookup: (hostname, options, callback) => {
+        return dns.lookup(hostname, { ...options, family: 4 }, callback);
+    }
 });
 
 transporter.verify((error, success) => {
