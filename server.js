@@ -223,6 +223,64 @@ app.post("/logout", (req, res) => {
   req.session.destroy(() => res.json({ ok: true }));
 });
 
+// ---------------- USER SEARCH ----------------
+app.get("/users/search", async (req, res) => {
+  if (!req.session.authenticated) return res.status(401).json({ error: "Unauthorized" });
+  const { q } = req.query;
+  const username = req.session.username;
+
+  try {
+    const { data, error } = await supabase
+      .from("users")
+      .select("username")
+      .neq("username", username)
+      .ilike("username", `%${q}%`)
+      .limit(10);
+
+    if (error) throw error;
+    res.json(data);
+  } catch (err) {
+    console.error("[Search] Error:", err);
+    res.status(500).json({ error: "Search failed" });
+  }
+});
+
+// ---------------- RECENT CHATS ----------------
+app.get("/users/recent-chats", async (req, res) => {
+  if (!req.session.authenticated) return res.status(401).json({ error: "Unauthorized" });
+  const username = req.session.username;
+
+  try {
+    // Fetch all messages involving the user
+    const { data, error } = await supabase
+      .from("messages")
+      .select("from, to, timestamp")
+      .or(`from.eq."${username}",to.eq."${username}"`)
+      .order("timestamp", { ascending: false });
+
+    if (error) throw error;
+
+    // Extract unique chat partners and their latest message timestamp
+    const partnersMap = new Map();
+    data.forEach(m => {
+      const partner = m.from === username ? m.to : m.from;
+      if (!partnersMap.has(partner)) {
+        partnersMap.set(partner, m.timestamp);
+      }
+    });
+
+    const recentChats = Array.from(partnersMap.entries()).map(([username, last_message]) => ({
+      username,
+      last_message
+    }));
+
+    res.json(recentChats);
+  } catch (err) {
+    console.error("[Recent Chats] Error:", err);
+    res.status(500).json({ error: "Failed to fetch recent chats" });
+  }
+});
+
 // ---------------- WEBSOCKET ----------------
 const server = http.createServer(app);
 const wss = new WebSocketServer({ noServer: true });
@@ -254,6 +312,54 @@ wss.on("connection", async (ws, req) => {
 
   // Broadcast updated user list
   broadcastUsers();
+
+  // Notify about unread messages (since last_login)
+  try {
+    const { data: user } = await supabase
+      .from("users")
+      .select("last_login")
+      .eq("username", username)
+      .single();
+
+    if (user) {
+      const lastLogin = user.last_login;
+      if (lastLogin) {
+        console.log(`🔍 Checking missed messages for ${username} since ${lastLogin}`);
+        const { data: missed, error: missedError } = await supabase
+          .from("messages")
+          .select("from, timestamp")
+          .eq("to", username)
+          .gt("timestamp", lastLogin);
+
+        if (missedError) console.error("❌ Missed messages fetch error:", missedError);
+
+        if (missed && missed.length > 0) {
+          console.log(`🔔 Found ${missed.length} missed messages for ${username}`);
+          // Count messages per sender
+          const counts = missed.reduce((acc, m) => {
+            acc[m.from] = (acc[m.from] || 0) + 1;
+            return acc;
+          }, {});
+
+          ws.send(JSON.stringify({
+            type: "missed_messages",
+            counts
+          }));
+        }
+      } else {
+        console.log(`🆕 First login for ${username}, initializing last_login.`);
+      }
+    }
+
+    // Update last_login to now so they don't get the same notifications again
+    await supabase
+      .from("users")
+      .update({ last_login: new Date().toISOString() })
+      .eq("username", username);
+
+  } catch (e) {
+    console.error("Error checking unread:", e);
+  }
 
   ws.on("message", async msg => {
     try {

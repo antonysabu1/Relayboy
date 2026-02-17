@@ -1,268 +1,361 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>RelayBoy - Verify OTP</title>
-    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
-    <style>
-      :root {
-        --bg: #070b14;
-        --fg: #f0f5ff;
-        --muted: #9aa6bf;
-        --primary: #2dd4bf;
-        --secondary: #38bdf8;
-        --accent: #22c55e;
-        --danger: #ef4444;
-        --glass: rgba(12, 16, 26, 0.7);
-        --glass-border: rgba(255, 255, 255, 0.08);
-      }
 
-      * { box-sizing: border-box; }
-      html, body { height: 100%; }
-      body {
-        margin: 0;
-        font-family: "Sora", sans-serif;
-        color: var(--fg);
-        background:
-          radial-gradient(1000px 800px at 10% 10%, rgba(45, 212, 191, 0.15), transparent),
-          radial-gradient(900px 700px at 90% 20%, rgba(56, 189, 248, 0.15), transparent),
-          radial-gradient(1100px 800px at 50% 90%, rgba(34, 197, 94, 0.12), transparent),
-          #05070d;
-        display: grid;
-        place-items: center;
-        overflow: hidden;
-        padding: 32px 16px;
-      }
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RelayBoy - Verify OTP</title>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap"
+    rel="stylesheet" />
+  <style>
+    :root {
+      --bg-deep: #030712;
+      --primary: #818cf8;
+      --primary-glow: rgba(129, 140, 248, 0.4);
+      --secondary: #2dd4bf;
+      --fg-main: #f8fafc;
+      --fg-muted: #94a3b8;
+      --glass-bg: rgba(15, 23, 42, 0.65);
+      --glass-border: rgba(255, 255, 255, 0.08);
+      --danger: #f87171;
+      --card-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.8);
+    }
 
-      .card {
-        position: relative;
-        width: min(520px, 92vw);
-        padding: 32px;
-        border-radius: 28px;
-        background: var(--glass);
-        border: 1px solid var(--glass-border);
-        backdrop-filter: blur(18px);
-        box-shadow: 0 25px 60px rgba(0, 0, 0, 0.45);
-      }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
 
-      .logo {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        margin-bottom: 18px;
-      }
-      .logo-badge {
-        width: 52px;
-        height: 52px;
-        border-radius: 16px;
-        background: linear-gradient(135deg, var(--primary), var(--secondary));
-        display: grid;
-        place-items: center;
-        box-shadow: 0 0 28px rgba(45, 212, 191, 0.35);
-        font-family: "Space Grotesk", sans-serif;
-        font-weight: 700;
-        color: #051117;
-      }
-      .title {
-        font-family: "Space Grotesk", sans-serif;
-        font-size: 28px;
-        margin: 0 0 6px 0;
-      }
-      .subtitle {
-        margin: 0;
-        color: var(--muted);
-        font-size: 14px;
-      }
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      color: var(--fg-main);
+      background: var(--bg-deep);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow-x: hidden;
+      background-image:
+        radial-gradient(at 0% 0%, rgba(129, 140, 248, 0.15) 0px, transparent 50%),
+        radial-gradient(at 100% 0%, rgba(45, 212, 191, 0.12) 0px, transparent 50%);
+    }
 
-      .email-row {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        padding: 12px 16px;
-        border-radius: 16px;
-        background: rgba(255, 255, 255, 0.04);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        margin: 20px 0;
-      }
-      .email-icon {
-        width: 36px;
-        height: 36px;
-        border-radius: 12px;
-        display: grid;
-        place-items: center;
-        background: linear-gradient(135deg, var(--primary), var(--accent));
-        color: #051117;
-        font-weight: 700;
-      }
-      .email-text { font-weight: 600; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-      .timer {
-        margin-left: auto;
-        font-size: 12px;
-        font-weight: 700;
-        color: var(--primary);
-      }
+    .bg-glow {
+      position: fixed;
+      width: 500px;
+      height: 500px;
+      border-radius: 50%;
+      filter: blur(120px);
+      opacity: 0.3;
+      z-index: 0;
+      pointer-events: none;
+    }
 
-      .otp {
-        display: grid;
-        grid-template-columns: repeat(6, 1fr);
-        gap: 10px;
-        margin: 22px 0 12px;
-      }
-      .otp input {
-        width: 100%;
-        height: 54px;
-        border-radius: 16px;
-        background: rgba(255, 255, 255, 0.04);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        color: var(--fg);
-        text-align: center;
-        font-size: 20px;
-        font-weight: 600;
-        outline: none;
-        transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
-      }
-      .otp input:focus {
-        border-color: var(--primary);
-        box-shadow: 0 0 0 3px rgba(45, 212, 191, 0.18);
-        transform: translateY(-1px);
-      }
+    .shell {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      max-width: 480px;
+      padding: 24px;
+    }
 
-      .btn {
-        width: 100%;
-        height: 54px;
-        border: none;
-        border-radius: 18px;
-        font-weight: 700;
-        font-size: 15px;
-        color: #051117;
-        cursor: pointer;
-        background: linear-gradient(135deg, var(--primary), var(--secondary));
-        box-shadow: 0 10px 30px rgba(45, 212, 191, 0.3);
-        transition: transform 0.2s ease, opacity 0.2s ease;
-      }
-      .btn:hover { transform: translateY(-1px); }
-      .btn:disabled { opacity: 0.7; cursor: not-allowed; }
+    .glass-panel {
+      background: var(--glass-bg);
+      backdrop-filter: blur(24px) saturate(180%);
+      -webkit-backdrop-filter: blur(24px) saturate(180%);
+      border: 1px solid var(--glass-border);
+      border-radius: 32px;
+      padding: 42px;
+      box-shadow: var(--card-shadow);
+    }
 
-      .hint {
-        margin-top: 12px;
-        font-size: 12px;
-        color: var(--muted);
-        text-align: center;
-      }
-      .error {
-        margin-top: 12px;
-        color: var(--danger);
-        font-size: 13px;
-        font-weight: 600;
-        text-align: center;
-      }
-      .back {
-        display: block;
-        margin-top: 18px;
-        text-align: center;
-        color: var(--muted);
-        text-decoration: none;
-        font-size: 13px;
-      }
-      .back:hover { color: white; }
-    </style>
-  </head>
-  <body>
-    <div class="card">
-      <div class="logo">
-        <div class="logo-badge">RB</div>
-        <div>
-          <h1 class="title">Verify Your Email</h1>
-          <p class="subtitle">Enter the 6-digit code we sent to you</p>
+    .brand {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      margin-bottom: 32px;
+    }
+
+    .brand-logo {
+      width: 56px;
+      height: 56px;
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 16px;
+      box-shadow: 0 0 30px var(--primary-glow);
+    }
+
+    .brand h1 {
+      font-size: 24px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      background: linear-gradient(to right, #fff, #94a3b8);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .brand p {
+      color: var(--fg-muted);
+      font-size: 14px;
+      margin-top: 4px;
+    }
+
+    .email-chip {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 18px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--glass-border);
+      border-radius: 16px;
+      margin-top: 8px;
+      width: 100%;
+    }
+
+    .email-icon {
+      width: 32px;
+      height: 32px;
+      background: rgba(129, 140, 248, 0.1);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--primary);
+    }
+
+    .email-text {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--fg-main);
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .timer-badge {
+      margin-left: auto;
+      font-size: 12px;
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--secondary);
+      font-weight: 700;
+    }
+
+    .otp-container {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 10px;
+      margin: 32px 0;
+    }
+
+    .otp-container input {
+      width: 100%;
+      height: 56px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--glass-border);
+      border-radius: 14px;
+      text-align: center;
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--fg-main);
+      transition: all 0.3s ease;
+    }
+
+    .otp-container input:focus {
+      outline: none;
+      border-color: var(--primary);
+      background: rgba(255, 255, 255, 0.05);
+      box-shadow: 0 0 20px rgba(129, 140, 248, 0.15);
+      transform: translateY(-2px);
+    }
+
+    .btn-verify {
+      width: 100%;
+      height: 52px;
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 16px;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 8px 24px var(--primary-glow);
+    }
+
+    .btn-verify:hover {
+      transform: translateY(-2px);
+      background: #6366f1;
+      box-shadow: 0 12px 32px var(--primary-glow);
+    }
+
+    .btn-verify:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .meta-links {
+      margin-top: 24px;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .hint {
+      font-size: 12px;
+      color: var(--fg-muted);
+      line-height: 1.5;
+    }
+
+    .back-link {
+      font-size: 13px;
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 600;
+      transition: color 0.2s;
+    }
+
+    .back-link:hover {
+      color: var(--secondary);
+    }
+
+    .error-box {
+      margin-top: 16px;
+      padding: 10px;
+      background: rgba(248, 113, 113, 0.1);
+      border-radius: 12px;
+      color: var(--danger);
+      font-size: 13px;
+      font-weight: 600;
+      text-align: center;
+      display: none;
+    }
+
+    .error-box.show {
+      display: block;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="bg-glow" style="top:-10%; right:-10%; background: var(--primary);"></div>
+  <div class="bg-glow" style="bottom:-10%; left:-10%; background: var(--secondary);"></div>
+
+  <div class="shell">
+    <div class="glass-panel">
+      <div class="brand">
+        <div class="brand-logo">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+          </svg>
         </div>
-      </div>
+        <h1>Identity Verification</h1>
+        <p>Security protocol required to proceed</p>
 
-      <div class="email-row">
-        <div class="email-icon">ID</div>
-        <div class="email-text" id="emailText">your email</div>
-        <div class="timer" id="timer">05:00</div>
+        <div class="email-chip">
+          <div class="email-icon">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+              <polyline points="22,6 12,13 2,6"></polyline>
+            </svg>
+          </div>
+          <div class="email-text" id="emailText">your email</div>
+          <div class="timer-badge" id="timer">05:00</div>
+        </div>
       </div>
 
       <form id="otpForm">
-        <div class="otp" id="otpInputs">
-          <input inputmode="numeric" maxlength="1" />
-          <input inputmode="numeric" maxlength="1" />
-          <input inputmode="numeric" maxlength="1" />
-          <input inputmode="numeric" maxlength="1" />
-          <input inputmode="numeric" maxlength="1" />
-          <input inputmode="numeric" maxlength="1" />
+        <div class="otp-container" id="otpInputs">
+          <input inputmode="numeric" maxlength="1" autocomplete="off" />
+          <input inputmode="numeric" maxlength="1" autocomplete="off" />
+          <input inputmode="numeric" maxlength="1" autocomplete="off" />
+          <input inputmode="numeric" maxlength="1" autocomplete="off" />
+          <input inputmode="numeric" maxlength="1" autocomplete="off" />
+          <input inputmode="numeric" maxlength="1" autocomplete="off" />
         </div>
 
-        <button class="btn" id="verifyBtn" type="submit">Verify and Continue</button>
+        <button class="btn-verify" id="verifyBtn" type="submit">Complete Protocol</button>
       </form>
 
-      <div class="hint">Did not get the code? Check spam or try again from the sign-up screen.</div>
-      <div class="error" id="errorMsg"></div>
-      <a class="back" href="/login">Back to sign in</a>
+      <div class="error-box" id="errorMsg"></div>
+
+      <div class="meta-links">
+        <div class="hint">Check your secure terminal (inbox) for the access code.</div>
+        <a class="back-link" href="/login">Abort and return to login</a>
+      </div>
     </div>
+  </div>
 
-    <script>
-      const email = sessionStorage.getItem("register_email");
-      if (!email) window.location = "/login";
+  <script>
+    const email = sessionStorage.getItem("register_email");
+    if (!email) window.location = "/login";
 
-      const emailText = document.getElementById("emailText");
-      if (email) emailText.textContent = email;
+    const emailText = document.getElementById("emailText");
+    if (email) emailText.textContent = email;
 
-      const inputs = Array.from(document.querySelectorAll("#otpInputs input"));
-      const errorMsg = document.getElementById("errorMsg");
-      const verifyBtn = document.getElementById("verifyBtn");
+    const inputs = Array.from(document.querySelectorAll("#otpInputs input"));
+    const errorMsg = document.getElementById("errorMsg");
+    const verifyBtn = document.getElementById("verifyBtn");
 
-      inputs.forEach((input, idx) => {
-        input.addEventListener("input", (e) => {
-          const value = e.target.value.replace(/\D/g, "");
-          e.target.value = value;
-          if (value && idx < inputs.length - 1) inputs[idx + 1].focus();
-        });
-
-        input.addEventListener("keydown", (e) => {
-          if (e.key === "Backspace" && !input.value && idx > 0) inputs[idx - 1].focus();
-        });
+    inputs.forEach((input, idx) => {
+      input.addEventListener("input", (e) => {
+        const value = e.target.value.replace(/\D/g, "");
+        e.target.value = value;
+        if (value && idx < inputs.length - 1) inputs[idx + 1].focus();
       });
 
-      document.getElementById("otpForm").addEventListener("submit", async (e) => {
-        e.preventDefault();
-        errorMsg.textContent = "";
-
-        const otp = inputs.map(i => i.value).join("");
-        if (otp.length !== 6) {
-          errorMsg.textContent = "Enter the 6-digit code.";
-          return;
-        }
-
-        verifyBtn.disabled = true;
-
-        try {
-          const res = await fetch("/verify-register-otp", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ email, otp })
-          });
-
-          const data = await res.json();
-          if (!res.ok) throw new Error(data.error || "Verification failed");
-          sessionStorage.removeItem("register_email");
-          window.location = "/chat";
-        } catch (err) {
-          errorMsg.textContent = err.message || "Verification failed";
-        } finally {
-          verifyBtn.disabled = false;
-        }
+      input.addEventListener("keydown", (e) => {
+        if (e.key === "Backspace" && !input.value && idx > 0) inputs[idx - 1].focus();
       });
+    });
 
-      let secondsLeft = 300;
-      const timer = document.getElementById("timer");
-      setInterval(() => {
-        secondsLeft = Math.max(0, secondsLeft - 1);
-        const m = String(Math.floor(secondsLeft / 60)).padStart(2, "0");
-        const s = String(secondsLeft % 60).padStart(2, "0");
-        timer.textContent = `${m}:${s}`;
-      }, 1000);
-    </script>
-  </body>
+    document.getElementById("otpForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      errorMsg.textContent = "";
+
+      const otp = inputs.map(i => i.value).join("");
+      if (otp.length !== 6) {
+        errorMsg.textContent = "Enter the 6-digit code.";
+        return;
+      }
+
+      verifyBtn.disabled = true;
+
+      try {
+        const res = await fetch("/verify-register-otp", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, otp })
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Verification failed");
+        sessionStorage.removeItem("register_email");
+        window.location = "/chat";
+      } catch (err) {
+        errorMsg.textContent = err.message || "Verification failed";
+      } finally {
+        verifyBtn.disabled = false;
+      }
+    });
+
+    let secondsLeft = 300;
+    const timer = document.getElementById("timer");
+    setInterval(() => {
+      secondsLeft = Math.max(0, secondsLeft - 1);
+      const m = String(Math.floor(secondsLeft / 60)).padStart(2, "0");
+      const s = String(secondsLeft % 60).padStart(2, "0");
+      timer.textContent = `${m}:${s}`;
+    }, 1000);
+  </script>
+</body>
+
 </html>
