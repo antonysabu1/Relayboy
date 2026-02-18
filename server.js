@@ -48,6 +48,18 @@ app.use(sessionParser);
 app.use("/static", express.static(path.join(__dirname, "public")));
 
 // ---------------- Utils ----------------
+async function withRetry(fn, retries = 3, delay = 1000) {
+  for (let i = 0; i < retries; i++) {
+    try {
+      return await fn();
+    } catch (err) {
+      if (i === retries - 1) throw err;
+      console.warn(`⚠️ Supabase operation failed, retrying (${i + 1}/${retries})...`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+  }
+}
+
 function generateOTP() {
   return Math.floor(100000 + Math.random() * 900000).toString();
 }
@@ -80,6 +92,13 @@ app.get("/chat", (req, res) => {
 });
 
 // ---------------- REGISTER (SEND OTP) ----------------
+app.get("/api/config", (req, res) => {
+  res.json({
+    url: process.env.SUPABASE_URL,
+    key: process.env.SUPABASE_ANON_KEY
+  });
+});
+
 app.post("/register", async (req, res) => {
   const { email, username, password } = req.body;
   console.log(`[Registration] Attempt for user: ${username}, email: ${email}`);
@@ -96,10 +115,12 @@ app.post("/register", async (req, res) => {
     }
 
     console.log("[Registration] Checking for existing user...");
-    const { data, error: fetchError } = await supabase
-      .from("users")
-      .select("email, username")
-      .or(`email.eq.${email},username.eq.${username}`);
+    const { data, error: fetchError } = await withRetry(() =>
+      supabase
+        .from("users")
+        .select("email, username")
+        .or(`email.eq.${email},username.eq.${username}`)
+    );
 
     if (fetchError) {
       console.error("[Registration] Supabase fetch error:", fetchError);
@@ -173,12 +194,14 @@ app.post("/verify-register-otp", async (req, res) => {
     }
 
     console.log("[Verify OTP] Inserting user into Supabase...");
-    const { error: insertError } = await supabase.from("users").insert([{
-      email: pending.email,
-      username: pending.username,
-      password_hash: pending.password_hash,
-      is_verified: true
-    }]);
+    const { error: insertError } = await withRetry(() =>
+      supabase.from("users").insert([{
+        email: pending.email,
+        username: pending.username,
+        password_hash: pending.password_hash,
+        is_verified: true
+      }])
+    );
 
     if (insertError) {
       console.error("[Verify OTP] Supabase insert error:", insertError);
@@ -202,11 +225,13 @@ app.post("/verify-register-otp", async (req, res) => {
 app.post("/login", async (req, res) => {
   const { emailOrUsername, password } = req.body;
 
-  const { data } = await supabase
-    .from("users")
-    .select("*")
-    .or(`email.eq.${emailOrUsername},username.eq.${emailOrUsername}`)
-    .limit(1);
+  const { data } = await withRetry(() =>
+    supabase
+      .from("users")
+      .select("*")
+      .or(`email.eq.${emailOrUsername},username.eq.${emailOrUsername}`)
+      .limit(1)
+  );
 
   const user = data?.[0];
   if (!user || !bcrypt.compareSync(password, user.password_hash))
@@ -214,13 +239,68 @@ app.post("/login", async (req, res) => {
 
   req.session.authenticated = true;
   req.session.username = user.username;
+  req.session.avatar_url = user.avatar_url;
 
-  res.json({ ok: true });
+  res.json({ ok: true, avatar_url: user.avatar_url });
+});
+
+// ---------------- PROFILE UPDATE ----------------
+app.post("/api/user/profile", async (req, res) => {
+  if (!req.session.authenticated) return res.status(401).json({ error: "Unauthorized" });
+  const { avatar_url } = req.body;
+  const username = req.session.username;
+
+  try {
+    const { error } = await withRetry(() =>
+      supabase
+        .from("users")
+        .update({ avatar_url })
+        .eq("username", username)
+    );
+
+    if (error) throw error;
+
+    req.session.avatar_url = avatar_url;
+    res.json({ ok: true });
+
+    // Re-broadcast users to update everyone's view
+    broadcastUsers();
+  } catch (err) {
+    console.error("[Profile Update] Error:", err);
+    res.status(500).json({ error: "Update failed" });
+  }
 });
 
 // ---------------- LOGOUT ----------------
-app.post("/logout", (req, res) => {
-  req.session.destroy(() => res.json({ ok: true }));
+app.post("/logout", async (req, res) => {
+  const username = req.session.username;
+  try {
+    if (username) {
+      console.log(`[Logout] Marking ${username} as OFFLINE`);
+      await withRetry(() =>
+        supabase
+          .from("users")
+          .update({ is_online: false })
+          .eq("username", username)
+      );
+
+      // Force close all WS connections for this user if they exist
+      const userSockets = clients.get(username);
+      if (userSockets) {
+        userSockets.forEach(ws => ws.close());
+        clients.delete(username);
+      }
+
+      broadcastUsers();
+    }
+  } catch (err) {
+    console.error("[Logout] Presence update error:", err);
+  }
+
+  req.session.destroy(() => {
+    res.clearCookie('connect.sid'); // Ensure cookie is cleared
+    res.json({ ok: true });
+  });
 });
 
 // ---------------- USER SEARCH ----------------
@@ -230,12 +310,14 @@ app.get("/users/search", async (req, res) => {
   const username = req.session.username;
 
   try {
-    const { data, error } = await supabase
-      .from("users")
-      .select("username")
-      .neq("username", username)
-      .ilike("username", `%${q}%`)
-      .limit(10);
+    const { data, error } = await withRetry(() =>
+      supabase
+        .from("users")
+        .select("username")
+        .neq("username", username)
+        .ilike("username", `%${q}%`)
+        .limit(10)
+    );
 
     if (error) throw error;
     res.json(data);
@@ -252,11 +334,13 @@ app.get("/users/recent-chats", async (req, res) => {
 
   try {
     // Fetch all messages involving the user
-    const { data, error } = await supabase
-      .from("messages")
-      .select("from, to, timestamp")
-      .or(`from.eq."${username}",to.eq."${username}"`)
-      .order("timestamp", { ascending: false });
+    const { data, error } = await withRetry(() =>
+      supabase
+        .from("messages")
+        .select("from, to, timestamp")
+        .or(`from.eq."${username}",to.eq."${username}"`)
+        .order("timestamp", { ascending: false })
+    );
 
     if (error) throw error;
 
@@ -269,9 +353,22 @@ app.get("/users/recent-chats", async (req, res) => {
       }
     });
 
+    // Fetch avatars for these partners
+    const partners = Array.from(partnersMap.keys());
+    const { data: userData } = await withRetry(() =>
+      supabase
+        .from("users")
+        .select("username, avatar_url, is_online")
+        .in("username", partners)
+    );
+
+    const partnersDataMap = new Map(userData?.map(u => [u.username, { avatar_url: u.avatar_url, is_online: u.is_online }]));
+
     const recentChats = Array.from(partnersMap.entries()).map(([username, last_message]) => ({
       username,
-      last_message
+      last_message,
+      avatar_url: partnersDataMap.get(username)?.avatar_url,
+      is_online: partnersDataMap.get(username)?.is_online
     }));
 
     res.json(recentChats);
@@ -284,14 +381,30 @@ app.get("/users/recent-chats", async (req, res) => {
 // ---------------- WEBSOCKET ----------------
 const server = http.createServer(app);
 const wss = new WebSocketServer({ noServer: true });
-const clients = new Map();
+const clients = new Map(); // username -> Set(WebSocket)
 
-function broadcastUsers() {
-  const users = Array.from(clients.keys());
-  const msg = JSON.stringify({ type: "users", users });
-  clients.forEach(client => {
-    if (client.readyState === 1) client.send(msg);
-  });
+async function broadcastUsers() {
+  try {
+    // Only fetch users who are actually marked as online in the DB
+    const { data: usersData, error } = await withRetry(() =>
+      supabase
+        .from("users")
+        .select("username, avatar_url, is_online")
+        .eq("is_online", true)
+    );
+
+    if (error) throw error;
+
+    const users = usersData || [];
+    const msg = JSON.stringify({ type: "users", users });
+    clients.forEach(userSockets => {
+      userSockets.forEach(client => {
+        if (client.readyState === 1) client.send(msg);
+      });
+    });
+  } catch (err) {
+    console.error("Broadcast error:", err);
+  }
 }
 
 server.on("upgrade", (req, socket, head) => {
@@ -303,62 +416,65 @@ server.on("upgrade", (req, socket, head) => {
   });
 });
 
+wss.on("error", err => console.error("⚠️ WSS Error:", err));
+
 wss.on("connection", async (ws, req) => {
   const username = req.session.username;
-  clients.set(username, ws);
+
+  ws.on("error", err => console.error(`⚠️ WS Error for ${username}:`, err));
 
   // Send initial connection confirmation
-  ws.send(JSON.stringify({ type: "connected", username }));
+  ws.send(JSON.stringify({
+    type: "connected",
+    username,
+    avatar_url: req.session.avatar_url
+  }));
 
-  // Broadcast updated user list
-  broadcastUsers();
+  // 1. Mark user as online in DB (only if first tab)
+  const isFirstTab = !clients.has(username) || clients.get(username).size === 0;
 
-  // Notify about unread messages (since last_login)
+  if (!clients.has(username)) {
+    clients.set(username, new Set());
+  }
+  clients.get(username).add(ws);
+
+  if (isFirstTab) {
+    console.log(`[Presence] Marking ${username} as ONLINE (First connection)`);
+    await withRetry(() =>
+      supabase
+        .from("users")
+        .update({ is_online: true, last_login: new Date().toISOString() })
+        .eq("username", username)
+    );
+    console.log(`[Presence] Broadcasting online users...`);
+    broadcastUsers();
+  }
+
+  // 3. Fetch accurate unread counts from DB
   try {
-    const { data: user } = await supabase
-      .from("users")
-      .select("last_login")
-      .eq("username", username)
-      .single();
+    const { data: unreadData, error: unreadError } = await withRetry(() =>
+      supabase
+        .from("messages")
+        .select("from, is_seen")
+        .eq("to", username)
+        .eq("is_seen", false)
+    );
 
-    if (user) {
-      const lastLogin = user.last_login;
-      if (lastLogin) {
-        console.log(`🔍 Checking missed messages for ${username} since ${lastLogin}`);
-        const { data: missed, error: missedError } = await supabase
-          .from("messages")
-          .select("from, timestamp")
-          .eq("to", username)
-          .gt("timestamp", lastLogin);
+    if (unreadError) throw unreadError;
 
-        if (missedError) console.error("❌ Missed messages fetch error:", missedError);
+    if (unreadData && unreadData.length > 0) {
+      const counts = unreadData.reduce((acc, m) => {
+        acc[m.from] = (acc[m.from] || 0) + 1;
+        return acc;
+      }, {});
 
-        if (missed && missed.length > 0) {
-          console.log(`🔔 Found ${missed.length} missed messages for ${username}`);
-          // Count messages per sender
-          const counts = missed.reduce((acc, m) => {
-            acc[m.from] = (acc[m.from] || 0) + 1;
-            return acc;
-          }, {});
-
-          ws.send(JSON.stringify({
-            type: "missed_messages",
-            counts
-          }));
-        }
-      } else {
-        console.log(`🆕 First login for ${username}, initializing last_login.`);
-      }
+      ws.send(JSON.stringify({
+        type: "unread_counts",
+        counts
+      }));
     }
-
-    // Update last_login to now so they don't get the same notifications again
-    await supabase
-      .from("users")
-      .update({ last_login: new Date().toISOString() })
-      .eq("username", username);
-
   } catch (e) {
-    console.error("Error checking unread:", e);
+    console.error("Error fetching unread counts:", e);
   }
 
   ws.on("message", async msg => {
@@ -367,53 +483,85 @@ wss.on("connection", async (ws, req) => {
       console.log(`📩 Received WS message: ${data.type} from ${username}`);
 
       if (data.type === "message") {
-        // Save to Supabase
-        const { error: insertError } = await supabase.from("messages").insert([{
-          from: username,
-          to: data.to,
-          message: data.message
-        }]);
+        const { error: insertError } = await withRetry(() =>
+          supabase
+            .from("messages")
+            .insert([{
+              from: username,
+              to: data.to,
+              message: data.message,
+              timestamp: new Date().toISOString(),
+              is_seen: false
+            }])
+        );
 
         if (insertError) {
           console.error("❌ Supabase INSERT error:", insertError);
-        } else {
-          console.log(`✅ Message saved from ${username} to ${data.to}`);
+          return;
         }
 
-        // Send to target
-        const target = clients.get(data.to);
-        if (target && target.readyState === 1) {
-          target.send(JSON.stringify({
-            type: "message",
-            from: username,
-            message: data.message,
-            timestamp: new Date().toLocaleTimeString()
-          }));
+        console.log(`✅ Message saved from ${username} to ${data.to}`);
+
+        const targetSockets = clients.get(data.to);
+        if (targetSockets) {
+          targetSockets.forEach(target => {
+            if (target.readyState === 1) {
+              target.send(JSON.stringify({
+                type: "message",
+                from: username,
+                message: data.message,
+                timestamp: new Date().toISOString()
+              }));
+            }
+          });
         }
       } else if (data.type === "typing") {
-        const target = clients.get(data.to);
-        if (target && target.readyState === 1) {
-          target.send(JSON.stringify({
-            type: "typing",
-            from: username
-          }));
+        const targetSockets = clients.get(data.to);
+        if (targetSockets) {
+          targetSockets.forEach(target => {
+            if (target.readyState === 1) {
+              target.send(JSON.stringify({
+                type: "typing",
+                from: username
+              }));
+            }
+          });
         }
       } else if (data.type === "seen") {
-        const target = clients.get(data.to);
-        if (target && target.readyState === 1) {
-          target.send(JSON.stringify({
-            type: "seen",
-            from: username
-          }));
+        // Persist seen status in DB
+        const { error: seenError } = await withRetry(() =>
+          supabase
+            .from("messages")
+            .update({ is_seen: true })
+            .eq("from", data.to)
+            .eq("to", username)
+            .eq("is_seen", false)
+        );
+
+        if (seenError) console.error("❌ Seen update error:", seenError);
+
+        const targetSockets = clients.get(data.to);
+        if (targetSockets) {
+          targetSockets.forEach(target => {
+            if (target.readyState === 1) {
+              target.send(JSON.stringify({
+                type: "seen",
+                from: username
+              }));
+            }
+          });
         }
-      } else if (data.type === "get_history") {
+      }
+      else if (data.type === "get_history") {
         console.log(`📜 Fetching history between ${username} and ${data.to}`);
-        // Fetch history between username and data.to
-        const { data: history, error: historyError } = await supabase
-          .from("messages")
-          .select("*")
-          .or(`and(from.eq."${username}",to.eq."${data.to}"),and(from.eq."${data.to}",to.eq."${username}")`)
-          .order("timestamp", { ascending: true });
+        // Fetch history with retry
+        const { data: history, error: historyError } = await withRetry(() =>
+          supabase
+            .from("messages")
+            .select("*")
+            .or(`and(from.eq."${username}",to.eq."${data.to}"),and(from.eq."${data.to}",to.eq."${username}")`)
+            .order("timestamp", { ascending: true })
+        );
 
         if (historyError) {
           console.error("❌ Supabase SELECT history error:", historyError);
@@ -425,7 +573,8 @@ wss.on("connection", async (ws, req) => {
           messages: (history || []).map(m => ({
             from: m.from,
             message: m.message,
-            timestamp: m.timestamp
+            timestamp: m.timestamp,
+            is_seen: m.is_seen
           }))
         }));
       }
@@ -434,9 +583,28 @@ wss.on("connection", async (ws, req) => {
     }
   });
 
-  ws.on("close", () => {
-    clients.delete(username);
-    broadcastUsers();
+  ws.on("close", async () => {
+    const userSockets = clients.get(username);
+    if (userSockets) {
+      userSockets.delete(ws);
+      if (userSockets.size === 0) {
+        clients.delete(username);
+        // Mark user as offline in DB ONLY if all tabs closed
+        console.log(`[Presence] Marking ${username} as OFFLINE (Last tab closed)`);
+        try {
+          await withRetry(() =>
+            supabase
+              .from("users")
+              .update({ is_online: false })
+              .eq("username", username)
+          );
+          console.log(`[Presence] ${username} is now offline in DB`);
+          broadcastUsers();
+        } catch (err) {
+          console.error(`[Presence] Failed to mark ${username} as offline:`, err);
+        }
+      }
+    }
   });
 });
 

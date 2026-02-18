@@ -6,25 +6,35 @@ export interface ChatMessage {
   from: string;
   message: string;
   timestamp: string;
+  is_seen?: boolean;
 }
 
 interface WSMessage {
   type: string;
   username?: string;
-  users?: string[];
+  avatar_url?: string;
+  users?: ChatUser[];
   from?: string;
   message?: string;
   timestamp?: string;
   error?: string;
 }
 
+export interface ChatUser {
+  username: string;
+  avatar_url?: string;
+  is_online?: boolean;
+}
+
 export function useWebSocket() {
   const [status, setStatus] = useState<ConnectionStatus>("disconnected");
   const [username, setUsername] = useState<string>("");
-  const [users, setUsers] = useState<string[]>([]);
+  const [avatarUrl, setAvatarUrl] = useState<string>("");
+  const [users, setUsers] = useState<ChatUser[]>([]);
   const [error, setError] = useState<string>("");
   const [incomingMessage, setIncomingMessage] = useState<ChatMessage | null>(null);
   const [history, setHistory] = useState<{ with: string; messages: ChatMessage[] } | null>(null);
+  const [unreadCounts, setUnreadCounts] = useState<{ [user: string]: number }>({});
   const socketRef = useRef<WebSocket | null>(null);
 
   const connect = useCallback(() => {
@@ -49,6 +59,7 @@ export function useWebSocket() {
 
       if (data.type === "connected" && data.username) {
         setUsername(data.username);
+        setAvatarUrl(data.avatar_url || "");
         setStatus("connected");
       }
 
@@ -64,12 +75,17 @@ export function useWebSocket() {
         });
       }
 
+      if (data.type === "unread_counts") {
+        setUnreadCounts((data as any).counts || {});
+      }
+
       if (data.type === "history" && data.with && data.messages) {
         setHistory({
           with: data.with,
           messages: data.messages.map(m => ({
             from: m.from,
             message: m.message,
+            is_seen: m.is_seen,
             timestamp: new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
           }))
         });
@@ -100,6 +116,12 @@ export function useWebSocket() {
     }
   }, []);
 
+  const sendSeen = useCallback((to: string) => {
+    if (socketRef.current?.readyState === WebSocket.OPEN) {
+      socketRef.current.send(JSON.stringify({ type: "seen", to }));
+    }
+  }, []);
+
   const disconnect = useCallback(() => {
     socketRef.current?.close();
   }, []);
@@ -113,13 +135,18 @@ export function useWebSocket() {
   return {
     status,
     username,
+    avatarUrl,
+    setAvatarUrl,
     users,
     error,
     incomingMessage,
     history,
+    unreadCounts,
+    setUnreadCounts,
     connect,
     sendMessage,
     getHistory,
+    sendSeen,
     disconnect,
   };
 }
