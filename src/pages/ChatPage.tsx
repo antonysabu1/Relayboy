@@ -74,6 +74,7 @@ export default function ChatPage() {
   const currentChatRef = useRef<string | null>(null);
   const lastIncomingKeyRef = useRef<string>("");
   const dashboardRef = useRef<HTMLDivElement>(null);
+  const headerRef = useRef<HTMLElement>(null);
 
   const unreadByUser = useMemo(() => {
     const acc: Record<string, number> = {};
@@ -363,13 +364,13 @@ export default function ChatPage() {
     <>
       <div className="p-4 border-b border-border/70">
         <div className="relative mb-4">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-cyan-400/60 transition-colors group-focus-within:text-cyan-400" />
           <input
             type="text"
             placeholder="Search users"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full h-10 pl-10 pr-3 rounded-xl glass-input text-sm focus:outline-none focus:ring-2 focus:ring-ring/25"
+            className="w-full h-11 pl-11 pr-4 rounded-2xl bg-white/[0.03] backdrop-blur-md border border-white/10 text-sm text-white placeholder:text-muted-foreground/40 focus:outline-none focus:ring-2 focus:ring-cyan-500/20 focus:bg-white/[0.06] transition-all"
           />
         </div>
 
@@ -377,10 +378,10 @@ export default function ChatPage() {
           <button
             onClick={() => setSidebarTab("recent")}
             className={cn(
-              "h-9 rounded-xl text-xs font-bold uppercase tracking-wider border",
+              "h-9 rounded-xl text-[10px] font-bold uppercase tracking-wider border transition-all duration-200",
               sidebarTab === "recent"
-                ? "bg-primary/12 text-primary border-primary/40"
-                : "bg-card/50 text-muted-foreground border-border/70"
+                ? "bg-cyan-500/20 text-cyan-400 border-cyan-500/40 shadow-[0_0_15px_rgba(0,219,255,0.1)]"
+                : "bg-white/5 text-muted-foreground/60 border-white/5 hover:bg-white/10 hover:text-white"
             )}
           >
             Recent
@@ -388,10 +389,10 @@ export default function ChatPage() {
           <button
             onClick={() => setSidebarTab("online")}
             className={cn(
-              "h-9 rounded-xl text-xs font-bold uppercase tracking-wider border",
+              "h-9 rounded-xl text-[10px] font-bold uppercase tracking-wider border transition-all duration-200",
               sidebarTab === "online"
-                ? "bg-primary/12 text-primary border-primary/40"
-                : "bg-card/50 text-muted-foreground border-border/70"
+                ? "bg-cyan-500/20 text-cyan-400 border-cyan-500/40 shadow-[0_0_15px_rgba(0,219,255,0.1)]"
+                : "bg-white/5 text-muted-foreground/60 border-white/5 hover:bg-white/10 hover:text-white"
             )}
           >
             Online
@@ -429,90 +430,103 @@ export default function ChatPage() {
       <div className="h-screen flex flex-col relative z-10 bento-section" ref={dashboardRef}>
         <GlobalSpotlight gridRef={dashboardRef as any} glowColor="0, 219, 255" spotlightRadius={800} />
 
-        <header className="h-16 md:h-20 px-4 md:px-8 flex items-center justify-between border-b border-border/70 glass relative z-20">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 md:w-11 md:h-11 rounded-2xl gradient-primary text-primary-foreground flex items-center justify-center shadow-[0_0_15px_rgba(0,219,255,0.3)] glow-primary relative z-10 pointer-events-none">
-              <MessageCircle className="w-5 h-5" />
+        <header className="h-16 md:h-20 w-full border-b border-white/5 z-50 relative bento-section" ref={headerRef}>
+          <GlobalSpotlight gridRef={headerRef as any} glowColor="0, 219, 255" spotlightRadius={400} />
+          <ParticleCard
+            className="w-full h-full px-4 md:px-8 flex flex-row items-center justify-between glass"
+            style={{ backgroundColor: 'transparent', borderRadius: 0 } as any}
+            enableTilt={false}
+            enableMagnetism={false}
+            clickEffect={true}
+            glowColor="0, 219, 255"
+          >
+            <div className="flex items-center gap-3 min-w-0 relative z-10 pointer-events-none">
+              <div className="w-11 h-11 md:w-12 md:h-12 rounded-2xl gradient-primary text-primary-foreground flex items-center justify-center shadow-[0_0_20px_rgba(0,219,255,0.3)] glow-primary">
+                <MessageCircle className="w-6 h-6" />
+              </div>
+              <div className="min-w-0">
+                <p className="font-display font-bold text-lg md:text-xl truncate text-white tracking-tight">RelayBoy</p>
+                <p className="text-[10px] uppercase tracking-[0.2em] text-cyan-400 font-bold drop-shadow-[0_0_8px_rgba(0,219,255,0.4)]">
+                  {reconnectAttempt > 0 ? `Reconnecting (${reconnectAttempt})` : "Secure Session"}
+                </p>
+              </div>
             </div>
-            <div className="min-w-0">
-              <p className="font-display font-bold text-base md:text-lg truncate">RelayBoy</p>
-              <p className="text-[10px] uppercase tracking-widest text-muted-foreground">
-                {reconnectAttempt > 0 ? `Reconnecting (${reconnectAttempt})` : "Secure Session"}
-              </p>
-            </div>
-          </div>
 
-          <div className="flex items-center gap-2 md:gap-3">
-            {isMobile ? (
-              <Button variant="outline" size="icon" className="rounded-xl" onClick={() => setIsUsersSheetOpen(true)}>
-                <PanelLeft className="w-4 h-4" />
-              </Button>
-            ) : null}
+            <div className="flex items-center gap-2 md:gap-4 relative z-10">
+              {isMobile ? (
+                <Button variant="outline" size="icon" className="rounded-xl border-white/10 bg-white/5 hover:bg-white/10" onClick={() => setIsUsersSheetOpen(true)}>
+                  <PanelLeft className="w-4 h-4 text-white" />
+                </Button>
+              ) : null}
 
-            <Dialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
-              <DialogTrigger asChild>
-                <button className="rounded-full" aria-label="Open settings">
-                  <AvatarBadge name={username || "?"} avatarUrl={avatarUrl} isOnline size="md" />
-                </button>
-              </DialogTrigger>
-              <DialogContent className="max-w-md rounded-3xl border-border/70 glass-card p-0 overflow-hidden">
-                <div className="h-24 gradient-primary" />
-                <div className="px-6 pb-6 -mt-10">
-                  <div className="flex items-end justify-between gap-4 mb-6">
-                    <div className="relative group">
-                      <AvatarBadge name={username || "?"} avatarUrl={avatarUrl} size="lg" className="w-20 h-20 ring-4 ring-background" />
-                      <button
-                        onClick={() => fileInputRef.current?.click()}
-                        className="absolute inset-0 rounded-full bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center"
-                      >
-                        <Upload className="w-5 h-5 text-white" />
-                      </button>
-                      <input type="file" ref={fileInputRef} onChange={handleAvatarUpload} className="hidden" accept="image/*" />
+              <Dialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
+                <DialogTrigger asChild>
+                  <button className="rounded-full transition-transform hover:scale-105 active:scale-95" aria-label="Open settings">
+                    <AvatarBadge name={username || "?"} avatarUrl={avatarUrl} isOnline size="md" />
+                  </button>
+                </DialogTrigger>
+                <DialogContent className="max-w-md rounded-3xl border-white/10 glass-card p-0 overflow-hidden shadow-[0_30px_60px_-15px_rgba(0,0,0,0.6)]">
+                  {/* Dialog content remains mostly same but with better theme matching */}
+                  <div className="h-24 gradient-primary" />
+                  <div className="px-6 pb-6 -mt-10">
+                    <div className="flex items-end justify-between gap-4 mb-6">
+                      <div className="relative group">
+                        <AvatarBadge name={username || "?"} avatarUrl={avatarUrl} size="lg" className="w-20 h-20 ring-4 ring-background" />
+                        <button
+                          onClick={() => fileInputRef.current?.click()}
+                          className="absolute inset-0 rounded-full bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity"
+                        >
+                          <Upload className="w-5 h-5 text-white" />
+                        </button>
+                        <input type="file" ref={fileInputRef} onChange={handleAvatarUpload} className="hidden" accept="image/*" />
+                      </div>
+                      <Button variant="destructive" size="sm" className="rounded-xl" onClick={handleAvatarDelete} disabled={!avatarUrl || uploading}>
+                        <Trash2 className="w-4 h-4 mr-1.5" />
+                        Remove
+                      </Button>
                     </div>
-                    <Button variant="destructive" size="sm" onClick={handleAvatarDelete} disabled={!avatarUrl || uploading}>
-                      <Trash2 className="w-4 h-4 mr-1" />
-                      Remove
+
+                    <h3 className="font-bold text-xl text-white">{username}</h3>
+                    <p className="text-xs text-slate-400 mb-6 flex items-center gap-2">
+                      <Shield className="w-3.5 h-3.5 text-cyan-400" />
+                      Settings & Security
+                    </p>
+
+                    <div className="grid grid-cols-3 gap-2 mb-6">
+                      {[
+                        { name: "dark", icon: Moon },
+                        { name: "light", icon: Sun },
+                        { name: "system", icon: Monitor },
+                      ].map((t) => (
+                        <button
+                          key={t.name}
+                          onClick={() => setTheme(t.name)}
+                          className={cn(
+                            "h-12 rounded-xl border text-[10px] font-bold uppercase tracking-wider flex flex-col items-center justify-center gap-1 transition-all",
+                            theme === t.name
+                              ? "bg-cyan-500/20 text-cyan-400 border-cyan-500/40"
+                              : "bg-white/5 text-slate-500 border-white/5 hover:bg-white/10"
+                          )}
+                        >
+                          <t.icon className="w-4 h-4" />
+                          {t.name}
+                        </button>
+                      ))}
+                    </div>
+
+                    <Button variant="destructive" className="w-full rounded-xl py-6 font-bold uppercase tracking-widest text-xs" onClick={handleLogout}>
+                      <LogOut className="w-4 h-4 mr-2" />
+                      Sign Out Session
                     </Button>
                   </div>
+                </DialogContent>
+              </Dialog>
 
-                  <h3 className="font-bold text-lg">{username}</h3>
-                  <p className="text-xs text-muted-foreground mb-6 flex items-center gap-1.5">
-                    <Shield className="w-3.5 h-3.5" />
-                    Identity and theme settings
-                  </p>
-
-                  <div className="grid grid-cols-3 gap-2 mb-6">
-                    {[
-                      { name: "dark", icon: Moon },
-                      { name: "light", icon: Sun },
-                      { name: "system", icon: Monitor },
-                    ].map((t) => (
-                      <button
-                        key={t.name}
-                        onClick={() => setTheme(t.name)}
-                        className={cn(
-                          "h-12 rounded-xl border text-xs font-bold uppercase tracking-wide flex items-center justify-center gap-1.5",
-                          theme === t.name
-                            ? "bg-primary/12 text-primary border-primary/40"
-                            : "bg-card/60 text-muted-foreground border-border/70"
-                        )}
-                      >
-                        <t.icon className="w-4 h-4" />
-                        {t.name}
-                      </button>
-                    ))}
-                  </div>
-
-                  <Button variant="destructive" className="w-full" onClick={handleLogout}>
-                    <LogOut className="w-4 h-4 mr-2" />
-                    Sign Out
-                  </Button>
-                </div>
-              </DialogContent>
-            </Dialog>
-
-            <ConnectionStatus status={status} username={username} />
-          </div>
+              <div className="pointer-events-none">
+                <ConnectionStatus status={status} username={username} />
+              </div>
+            </div>
+          </ParticleCard>
         </header>
 
         <div className="flex-1 flex overflow-hidden p-2 md:p-4 gap-3 relative z-20">
