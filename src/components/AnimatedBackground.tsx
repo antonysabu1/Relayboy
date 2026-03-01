@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { motion } from "framer-motion";
+import Prism from "@/components/Prism";
 
 const AnimatedBackground = () => {
   const particles = useMemo(
@@ -17,32 +18,26 @@ const AnimatedBackground = () => {
   );
 
   return (
-    <div className="fixed inset-0 -z-10 overflow-hidden bg-background">
-      <div className="absolute -top-24 -left-16 w-[50vw] h-[45vh] bg-primary/20 rounded-full blur-[100px]" />
-      <div className="absolute -bottom-24 -right-14 w-[50vw] h-[50vh] bg-secondary/20 rounded-full blur-[100px]" />
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,hsl(var(--primary)/0.12),transparent_35%),radial-gradient(circle_at_80%_70%,hsl(var(--secondary)/0.12),transparent_40%)]" />
-
-      <div className="absolute top-20 left-10 w-36 h-36 rounded-full border border-border/50 opacity-30 animate-orbit" />
-      <div className="absolute bottom-24 right-14 w-44 h-44 rounded-full border border-primary/30 opacity-30 animate-orbit" />
-
-      <div className="absolute inset-0 opacity-30">
-        {particles.map((p) => (
-          <motion.div
-            key={p.id}
-            className="absolute rounded-full bg-foreground"
-            initial={{ x: `${p.x}vw`, y: `${p.y}vh`, opacity: p.opacity }}
-            animate={{
-              y: [`${p.y}vh`, `${p.y - 8}vh`],
-              x: [`${p.x}vw`, `${p.x + p.drift}vw`],
-            }}
-            transition={{ duration: p.duration, repeat: Infinity, repeatType: "reverse", ease: "easeInOut" }}
-            style={{ width: `${p.size}px`, height: `${p.size}px` }}
+    <div className="fixed inset-0 -z-10 overflow-hidden bg-black">
+      {/* ── Prism WebGL background layer ── */}
+      <div className="absolute inset-0 w-full h-full opacity-100 flex items-center justify-center pointer-events-none">
+        <div className="w-full max-w-[1400px] h-[800px] relative">
+          <Prism
+            animationType="rotate"
+            timeScale={0.5}
+            height={3.5}
+            baseWidth={5.5}
+            scale={3.6}
+            hueShift={0}
+            colorFrequency={1}
+            noise={0}
+            glow={1}
           />
-        ))}
+        </div>
       </div>
 
-      <div className="absolute inset-0 bg-[linear-gradient(transparent_24px,hsl(var(--border)/0.18)_25px),linear-gradient(90deg,transparent_24px,hsl(var(--border)/0.18)_25px)] bg-[size:25px_25px] opacity-[0.12]" />
-      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-primary/10 to-transparent opacity-[0.06] animate-scan" />
+      {/* ── Subtle dark overlay (reduced to allow prism to shine) ── */}
+      <div className="absolute inset-0 bg-black/40 pointer-events-none" />
     </div>
   );
 };

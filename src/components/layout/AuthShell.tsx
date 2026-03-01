@@ -1,7 +1,8 @@
 import { motion } from "framer-motion";
 import AnimatedBackground from "@/components/AnimatedBackground";
+import { GlobalSpotlight } from "@/components/MagicBento";
 import PageTransition from "@/components/PageTransition";
-import type { ReactNode } from "react";
+import { ReactNode, useRef } from "react";
 
 interface AuthShellProps {
   title: string;
@@ -20,17 +21,20 @@ export default function AuthShell({
   footer,
   maxWidthClassName = "max-w-md",
 }: AuthShellProps) {
+  const shellRef = useRef<HTMLDivElement>(null);
+
   return (
     <PageTransition>
       <AnimatedBackground />
-      <div className="min-h-screen flex items-center justify-center p-4 relative z-10">
-        <div className={`w-full ${maxWidthClassName}`}>
-          <motion.div initial={{ y: -16, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-16 h-16 gradient-primary rounded-2xl shadow-xl glow-primary mb-4">
+      <div className="min-h-screen flex items-center justify-center p-4 relative z-10 bento-section" ref={shellRef}>
+        <GlobalSpotlight gridRef={shellRef as any} glowColor="0, 219, 255" spotlightRadius={600} />
+        <div className={`w-full ${maxWidthClassName} relative z-20`}>
+          <motion.div initial={{ y: -16, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="text-center mb-8 pointer-events-none">
+            <div className="inline-flex items-center justify-center w-16 h-16 gradient-primary rounded-2xl shadow-[0_0_20px_rgba(0,219,255,0.4)] glow-primary mb-4 p-4 border border-cyan-400/30">
               {icon}
             </div>
-            <h1 className="text-4xl font-display font-bold mb-2">{title}</h1>
-            <p className="text-muted-foreground text-sm font-medium">{subtitle}</p>
+            <h1 className="text-4xl font-display font-bold mb-2 text-white drop-shadow-md">{title}</h1>
+            <p className="text-cyan-100/70 text-sm font-medium">{subtitle}</p>
           </motion.div>
 
           {children}

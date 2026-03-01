@@ -16,9 +16,8 @@ export function ChatMessage({ message, timestamp, isSent, senderName, isSeen, de
 
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 0.95, y: 12 }}
-      animate={{ opacity: 1, scale: 1, y: 0 }}
-      transition={{ type: "spring", stiffness: 260, damping: 20 }}
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
       className={cn("flex gap-3 max-w-[86%]", isSent ? "self-end flex-row-reverse" : "self-start")}
     >
       {!isSent ? (

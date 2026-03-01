@@ -21,11 +21,9 @@ import {
   Upload,
   Shield,
   PanelLeft,
-  LockKeyhole,
 } from "lucide-react";
 import PageTransition from "@/components/PageTransition";
 import AnimatedBackground from "@/components/AnimatedBackground";
-import { ParticleCard, GlobalSpotlight } from "@/components/MagicBento";
 import { motion, AnimatePresence } from "framer-motion";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
@@ -73,7 +71,6 @@ export default function ChatPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const currentChatRef = useRef<string | null>(null);
   const lastIncomingKeyRef = useRef<string>("");
-  const dashboardRef = useRef<HTMLDivElement>(null);
 
   const unreadByUser = useMemo(() => {
     const acc: Record<string, number> = {};
@@ -426,12 +423,10 @@ export default function ChatPage() {
   return (
     <PageTransition>
       <AnimatedBackground />
-      <div className="h-screen flex flex-col relative z-10 bento-section" ref={dashboardRef}>
-        <GlobalSpotlight gridRef={dashboardRef as any} glowColor="0, 219, 255" spotlightRadius={800} />
-
-        <header className="h-16 md:h-20 px-4 md:px-8 flex items-center justify-between border-b border-border/70 glass relative z-20">
+      <div className="h-screen flex flex-col relative z-10">
+        <header className="h-16 md:h-20 px-4 md:px-8 flex items-center justify-between border-b border-border/70 glass">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 md:w-11 md:h-11 rounded-2xl gradient-primary text-primary-foreground flex items-center justify-center shadow-[0_0_15px_rgba(0,219,255,0.3)] glow-primary relative z-10 pointer-events-none">
+            <div className="w-10 h-10 md:w-11 md:h-11 rounded-2xl gradient-primary text-primary-foreground flex items-center justify-center">
               <MessageCircle className="w-5 h-5" />
             </div>
             <div className="min-w-0">
@@ -515,94 +510,70 @@ export default function ChatPage() {
           </div>
         </header>
 
-        <div className="flex-1 flex overflow-hidden p-2 md:p-4 gap-3 relative z-20">
-          <aside className="hidden md:flex w-[330px] flex-col h-full">
-            <ParticleCard
-              className="magic-bento-card magic-bento-card--border-glow w-full h-full flex flex-col p-0 overflow-hidden rounded-3xl border border-cyan-500/20 shadow-[0_0_20px_rgba(0,219,255,0.1)]"
-              style={{ backgroundColor: 'rgba(10, 15, 25, 0.4)', '--glow-color': '0, 219, 255' } as any}
-              enableTilt={false}
-              clickEffect={true}
-              glowColor="0, 219, 255"
-            >
-              {UsersPanel}
-            </ParticleCard>
+        <div className="flex-1 flex overflow-hidden p-2 md:p-4 gap-3">
+          <aside className="hidden md:flex w-[330px] rounded-3xl border border-border/70 glass-card overflow-hidden flex-col">
+            {UsersPanel}
           </aside>
 
-          <main className="flex-1 flex flex-col h-full">
-            <ParticleCard
-              className="magic-bento-card magic-bento-card--border-glow w-full h-full flex flex-col p-0 overflow-hidden rounded-3xl border border-cyan-500/20 shadow-[0_0_20px_rgba(0,219,255,0.1)]"
-              style={{ backgroundColor: 'rgba(10, 15, 25, 0.4)', '--glow-color': '0, 219, 255' } as any}
-              enableTilt={false}
-              clickEffect={true}
-              glowColor="0, 219, 255"
-            >
-              {currentChat ? (
-                <div className="flex flex-col h-full w-full relative z-10 pointer-events-auto">
-                  <div className="h-16 px-4 md:px-6 border-b border-border/70 flex items-center justify-between pointer-events-none relative z-10">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <AvatarBadge
-                        name={currentChat}
-                        avatarUrl={currentChatUser?.avatar_url}
-                        isOnline={!!currentChatUser?.is_online}
-                        size="md"
-                      />
-                      <div className="min-w-0 flex flex-col">
-                        <div className="flex items-center gap-2">
-                          <p className="font-semibold truncate text-white">{currentChat}</p>
-                          <div className="flex items-center gap-1 text-[10px] uppercase font-bold text-emerald-400 bg-emerald-950/40 px-2 py-0.5 rounded-full border border-emerald-500/20">
-                            <LockKeyhole className="w-3 h-3" />
-                            <span>E2E Encrypted</span>
-                          </div>
-                        </div>
-                        <p className="text-xs text-muted-foreground">{currentChatUser?.is_online ? "Online" : "Offline"}</p>
-                      </div>
+          <main className="flex-1 rounded-3xl border border-border/70 glass-card overflow-hidden flex flex-col">
+            {currentChat ? (
+              <>
+                <div className="h-16 px-4 md:px-6 border-b border-border/70 flex items-center justify-between">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <AvatarBadge
+                      name={currentChat}
+                      avatarUrl={currentChatUser?.avatar_url}
+                      isOnline={!!currentChatUser?.is_online}
+                      size="md"
+                    />
+                    <div className="min-w-0">
+                      <p className="font-semibold truncate">{currentChat}</p>
+                      <p className="text-xs text-muted-foreground">{currentChatUser?.is_online ? "Online" : "Offline"}</p>
                     </div>
-
-                    <button className="w-9 h-9 rounded-xl border border-border/70 bg-card/60 flex items-center justify-center pointer-events-auto hover:bg-white/5 hover:text-white transition-colors">
-                      <MoreVertical className="w-4 h-4 text-muted-foreground" />
-                    </button>
                   </div>
 
-                  <div className="flex-1 overflow-y-auto p-4 md:p-6 flex flex-col gap-4 scrollbar-thin overflow-x-hidden relative z-10 pointer-events-auto">
-                    {currentMessages.length === 0 ? (
-                      <div className="flex-1 flex flex-col items-center justify-center text-center">
-                        <MessageCircle className="w-12 h-12 text-primary mb-4" />
-                        <p className="font-semibold">No messages yet</p>
-                        <p className="text-sm text-muted-foreground">Start a secure conversation with @{currentChat}</p>
-                      </div>
-                    ) : (
-                      currentMessages.map((msg, index) => (
-                        <ChatBubble
-                          key={String(msg.id ?? `${msg.from}-${msg.timestamp}-${index}`)}
-                          message={msg.message}
-                          timestamp={msg.timestamp}
-                          isSent={msg.from === username}
-                          isSeen={msg.is_seen}
-                          deliveryStatus={msg.delivery_status}
-                          senderName={msg.from !== username ? msg.from : undefined}
-                        />
-                      ))
-                    )}
-                    <div ref={messagesEndRef} />
-                  </div>
-
-                  <div className="p-3 md:p-4 border-t border-border/70 relative z-10 pointer-events-auto">
-                    <ChatInput onSend={handleSendMessage} disabled={status !== "connected"} placeholder={`Message ${currentChat}`} />
-                  </div>
+                  <button className="w-9 h-9 rounded-xl border border-border/70 bg-card/60 flex items-center justify-center">
+                    <MoreVertical className="w-4 h-4 text-muted-foreground" />
+                  </button>
                 </div>
-              ) : (
-                <div className="flex-1 flex flex-col items-center justify-center text-center px-6 pointer-events-none relative z-10">
-                  <div className="w-20 h-20 mb-6 rounded-3xl bg-cyan-950/40 border border-cyan-500/20 flex items-center justify-center shadow-[0_0_30px_rgba(0,219,255,0.1)] glow-primary">
-                    <Users className="w-10 h-10 text-cyan-400 drop-shadow-[0_0_10px_rgba(0,219,255,0.5)]" />
-                  </div>
-                  <p className="font-display font-bold text-2xl text-white mb-2 tracking-tight">Select a conversation</p>
-                  <p className="text-sm text-cyan-100/60 mb-8 max-w-[280px] leading-relaxed">Unread chats are highlighted securely and automatically via the quantum-safe relay stream.</p>
-                  <Button className="md:hidden gradient-primary text-primary-foreground border border-cyan-400/30 px-8 py-6 rounded-2xl shadow-[0_0_20px_rgba(0,219,255,0.3)] pointer-events-auto transition-all hover:scale-105 active:scale-95" onClick={() => setIsUsersSheetOpen(true)}>
-                    Browse Users
-                  </Button>
+
+                <div className="flex-1 overflow-y-auto p-4 md:p-6 flex flex-col gap-4 scrollbar-thin">
+                  {currentMessages.length === 0 ? (
+                    <div className="flex-1 flex flex-col items-center justify-center text-center">
+                      <MessageCircle className="w-12 h-12 text-primary mb-4" />
+                      <p className="font-semibold">No messages yet</p>
+                      <p className="text-sm text-muted-foreground">Start a secure conversation with @{currentChat}</p>
+                    </div>
+                  ) : (
+                    currentMessages.map((msg, index) => (
+                      <ChatBubble
+                        key={String(msg.id ?? `${msg.from}-${msg.timestamp}-${index}`)}
+                        message={msg.message}
+                        timestamp={msg.timestamp}
+                        isSent={msg.from === username}
+                        isSeen={msg.is_seen}
+                        deliveryStatus={msg.delivery_status}
+                        senderName={msg.from !== username ? msg.from : undefined}
+                      />
+                    ))
+                  )}
+                  <div ref={messagesEndRef} />
                 </div>
-              )}
-            </ParticleCard>
+
+                <div className="p-3 md:p-4 border-t border-border/70">
+                  <ChatInput onSend={handleSendMessage} disabled={status !== "connected"} placeholder={`Message ${currentChat}`} />
+                </div>
+              </>
+            ) : (
+              <div className="flex-1 flex flex-col items-center justify-center text-center px-6">
+                <Users className="w-12 h-12 text-primary mb-4" />
+                <p className="font-semibold text-lg mb-1">Select a conversation</p>
+                <p className="text-sm text-muted-foreground mb-5">Unread chats are highlighted automatically.</p>
+                <Button className="md:hidden gradient-primary text-primary-foreground" onClick={() => setIsUsersSheetOpen(true)}>
+                  Browse Users
+                </Button>
+              </div>
+            )}
           </main>
         </div>
 
