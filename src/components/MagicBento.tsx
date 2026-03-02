@@ -1,6 +1,7 @@
 import { useRef, useEffect, useCallback, useState, ReactNode, CSSProperties } from 'react';
 import { gsap } from 'gsap';
 import './MagicBento.css';
+import { GlowingEffect } from './ui/glowing-effect';
 
 const DEFAULT_PARTICLE_COUNT = 12;
 const DEFAULT_SPOTLIGHT_RADIUS = 300;
@@ -331,6 +332,13 @@ export const ParticleCard = ({
             className={`${className} particle-container`}
             style={{ ...style, position: 'relative', overflow: 'hidden' }}
         >
+            <GlowingEffect
+                spread={40}
+                glow={true}
+                disabled={false}
+                proximity={64}
+                inactiveZone={0.01}
+            />
             {children}
         </div>
     );
@@ -522,7 +530,7 @@ const MagicBento = ({
     particleCount = DEFAULT_PARTICLE_COUNT,
     enableTilt = false,
     glowColor = DEFAULT_GLOW_COLOR,
-    clickEffect = true,
+    clickEffect = false,
     enableMagnetism = true,
     items = cardData
 }: MagicBentoProps) => {

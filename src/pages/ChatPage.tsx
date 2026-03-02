@@ -364,13 +364,13 @@ export default function ChatPage() {
     <>
       <div className="p-4 border-b border-border/70">
         <div className="relative mb-4">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-cyan-400/60 transition-colors group-focus-within:text-cyan-400" />
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/60 transition-colors group-focus-within:text-white/40" />
           <input
             type="text"
             placeholder="Search users"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full h-11 pl-11 pr-4 rounded-2xl bg-white/[0.03] backdrop-blur-md border border-white/10 text-sm text-white placeholder:text-muted-foreground/40 focus:outline-none focus:ring-2 focus:ring-cyan-500/20 focus:bg-white/[0.06] transition-all"
+            className="w-full h-11 pl-11 pr-4 rounded-2xl bg-black/[0.03] backdrop-blur-md border border-black/10 text-sm text-white placeholder:text-black/40 focus:outline-none focus:ring-2 focus:ring-white/50 focus:bg-white/[0.06] transition-all"
           />
         </div>
 
@@ -380,7 +380,7 @@ export default function ChatPage() {
             className={cn(
               "h-9 rounded-xl text-[10px] font-bold uppercase tracking-wider border transition-all duration-200",
               sidebarTab === "recent"
-                ? "bg-cyan-500/20 text-cyan-400 border-cyan-500/40 shadow-[0_0_15px_rgba(0,219,255,0.1)]"
+                ? "bg-white/20 text-white border-white/30"
                 : "bg-white/5 text-muted-foreground/60 border-white/5 hover:bg-white/10 hover:text-white"
             )}
           >
@@ -391,7 +391,7 @@ export default function ChatPage() {
             className={cn(
               "h-9 rounded-xl text-[10px] font-bold uppercase tracking-wider border transition-all duration-200",
               sidebarTab === "online"
-                ? "bg-cyan-500/20 text-cyan-400 border-cyan-500/40 shadow-[0_0_15px_rgba(0,219,255,0.1)]"
+                ? "bg-white/20 text-white border-white/30"
                 : "bg-white/5 text-muted-foreground/60 border-white/5 hover:bg-white/10 hover:text-white"
             )}
           >
@@ -428,16 +428,12 @@ export default function ChatPage() {
     <PageTransition>
       <AnimatedBackground />
       <div className="h-screen flex flex-col relative z-10 bento-section" ref={dashboardRef}>
-        <GlobalSpotlight gridRef={dashboardRef as any} glowColor="0, 219, 255" spotlightRadius={800} />
 
         <header className="h-16 md:h-20 w-full border-b border-white/5 z-50 relative bento-section" ref={headerRef}>
-          <GlobalSpotlight gridRef={headerRef as any} glowColor="0, 219, 255" spotlightRadius={400} />
           <ParticleCard
             className="w-full h-full px-4 md:px-8 flex flex-row items-center justify-between glass"
             style={{ backgroundColor: 'transparent', borderRadius: 0 } as any}
             enableTilt={false}
-            enableMagnetism={false}
-            clickEffect={true}
             glowColor="0, 219, 255"
           >
             <div className="flex items-center gap-3 min-w-0 relative z-10 pointer-events-none">
@@ -535,7 +531,6 @@ export default function ChatPage() {
               className="magic-bento-card magic-bento-card--border-glow w-full h-full flex flex-col p-0 overflow-hidden rounded-3xl border border-cyan-500/20 shadow-[0_0_20px_rgba(0,219,255,0.1)]"
               style={{ backgroundColor: 'rgba(10, 15, 25, 0.4)', '--glow-color': '0, 219, 255' } as any}
               enableTilt={false}
-              clickEffect={true}
               glowColor="0, 219, 255"
             >
               {UsersPanel}
@@ -547,7 +542,6 @@ export default function ChatPage() {
               className="magic-bento-card magic-bento-card--border-glow w-full h-full flex flex-col p-0 overflow-hidden rounded-3xl border border-cyan-500/20 shadow-[0_0_20px_rgba(0,219,255,0.1)]"
               style={{ backgroundColor: 'rgba(10, 15, 25, 0.4)', '--glow-color': '0, 219, 255' } as any}
               enableTilt={false}
-              clickEffect={true}
               glowColor="0, 219, 255"
             >
               {currentChat ? (

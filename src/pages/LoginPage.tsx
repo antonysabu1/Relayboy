@@ -69,10 +69,10 @@ export default function LoginPage() {
     <AuthShell
       title="RelayBoy"
       subtitle="Private messaging with refined UI and resilient UX"
-      icon={<MessageCircle className="w-8 h-8 text-primary-foreground" />}
+      icon={<MessageCircle className="w-8 h-8 text-white" />}
       footer={(
-        <p className="text-center text-xs text-muted-foreground uppercase tracking-widest font-bold flex items-center justify-center gap-2">
-          <Shield className="w-3 h-3 text-primary" />
+        <p className="text-center text-xs text-white uppercase tracking-widest font-bold flex items-center justify-center gap-2">
+          <Shield className="w-3 h-3 text-white" />
           Quantum Secure | Relay Ready
         </p>
       )}
@@ -83,20 +83,19 @@ export default function LoginPage() {
         className="w-full"
       >
         <ParticleCard
-          className="magic-bento-card magic-bento-card--border-glow w-full p-6 sm:p-8 rounded-[2rem] border border-cyan-500/20 shadow-[0_0_30px_rgba(0,219,255,0.15)]"
-          style={{ backgroundColor: 'rgba(10, 15, 25, 0.5)', '--glow-color': '0, 219, 255' } as any}
+          className="magic-bento-card magic-bento-card--border-glow w-full p-6 sm:p-8 rounded-[2rem] border border-white/20 shadow-[0_0_30px_rgba(255,255,255,0.15)]"
+          style={{ backgroundColor: 'rgba(255, 255, 255, 0.1)', '--glow-color': '255, 255, 255' } as any}
           enableTilt={true}
-          clickEffect={true}
-          glowColor="0, 219, 255"
+          glowColor="255, 255, 255"
         >
-          <div className="grid grid-cols-2 gap-2 rounded-xl border border-cyan-500/30 p-1 bg-black/40 mb-6 relative z-10 pointer-events-auto">
+          <div className="grid grid-cols-2 gap-2 rounded-xl border border-white/30 p-1 bg-black/40 mb-6 relative z-10 pointer-events-auto">
             <button
               type="button"
               onClick={() => {
                 setMode("login");
                 setError("");
               }}
-              className={`h-9 rounded-lg text-sm font-semibold transition ${mode === "login" ? "bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 shadow-[0_0_10px_rgba(0,219,255,0.2)]" : "text-cyan-100/50 hover:text-cyan-100/80 hover:bg-white/5"}`}
+              className={`h-9 rounded-lg text-sm font-semibold transition ${mode === "login" ? "bg-white/20 text-white border border-white/30" : "text-white/50 hover:text-white/80 hover:bg-white/10"}`}
             >
               Sign in
             </button>
@@ -106,7 +105,7 @@ export default function LoginPage() {
                 setMode("register");
                 setError("");
               }}
-              className={`h-9 rounded-lg text-sm font-semibold transition ${mode === "register" ? "bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 shadow-[0_0_10px_rgba(0,219,255,0.2)]" : "text-cyan-100/50 hover:text-cyan-100/80 hover:bg-white/5"}`}
+              className={`h-9 rounded-lg text-sm font-semibold transition ${mode === "register" ? "bg-white/20 text-white border border-white/30" : "text-white/50 hover:text-white/80 hover:bg-white/10"}`}
             >
               Register
             </button>
@@ -123,15 +122,15 @@ export default function LoginPage() {
                 className="space-y-4 relative z-10 pointer-events-auto"
               >
                 <div className="space-y-1.5">
-                  <Label htmlFor="identifier" className="text-cyan-50 font-medium ml-1">Email or Username</Label>
+                  <Label htmlFor="identifier" className="text-white/80 font-medium ml-1">Email or Username</Label>
                   <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-cyan-300/70" />
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/60" />
                     <Input
                       id="identifier"
                       value={loginIdentifier}
                       onChange={(e) => setLoginIdentifier(e.target.value)}
                       autoComplete="username"
-                      className="pl-10 h-11 bg-black/40 border-cyan-500/30 text-white placeholder:text-cyan-100/40 focus-visible:ring-cyan-500/50 focus-visible:border-cyan-400"
+                      className="pl-10 h-11 bg-black/40 border-white/30 text-white placeholder:text-white/40 focus-visible:ring-white/50 focus-visible:border-white"
                       placeholder="Enter details..."
                       required
                     />
@@ -139,23 +138,23 @@ export default function LoginPage() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label htmlFor="password" className="text-cyan-50 font-medium ml-1">Password</Label>
+                  <Label htmlFor="password" className="text-white/80 font-medium ml-1">Password</Label>
                   <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-cyan-300/70" />
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/60" />
                     <Input
                       id="password"
                       type="password"
                       value={loginPassword}
                       onChange={(e) => setLoginPassword(e.target.value)}
                       autoComplete="current-password"
-                      className="pl-10 h-11 bg-black/40 border-cyan-500/30 text-white placeholder:text-cyan-100/40 focus-visible:ring-cyan-500/50 focus-visible:border-cyan-400"
+                      className="pl-10 h-11 bg-black/40 border-white/30 text-white placeholder:text-white/40 focus-visible:ring-white/50 focus-visible:border-white"
                       placeholder="••••••••"
                       required
                     />
                   </div>
                 </div>
 
-                <Button type="submit" disabled={loading} className="w-full h-11 bg-cyan-500 hover:bg-cyan-400 text-cyan-950 font-bold border border-cyan-400/50 shadow-[0_0_15px_rgba(0,219,255,0.3)] transition-all mt-6">
+                <Button type="submit" disabled={loading} className="w-full h-11 bg-white text-black font-bold border border-white/30 transition-all mt-6">
                   {loading ? "Signing in..." : "Sign in"}
                   <ArrowRight className="w-4 h-4 ml-1" />
                 </Button>
@@ -170,16 +169,16 @@ export default function LoginPage() {
                 className="space-y-4 relative z-10 pointer-events-auto"
               >
                 <div className="space-y-1.5">
-                  <Label htmlFor="email" className="text-cyan-50 font-medium ml-1">Email</Label>
+                  <Label htmlFor="email" className="text-white/80 font-medium ml-1">Email</Label>
                   <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-cyan-300/70" />
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/60" />
                     <Input
                       id="email"
                       type="email"
                       value={regEmail}
                       onChange={(e) => setRegEmail(e.target.value)}
                       autoComplete="email"
-                      className="pl-10 h-11 bg-black/40 border-cyan-500/30 text-white placeholder:text-cyan-100/40 focus-visible:ring-cyan-500/50 focus-visible:border-cyan-400"
+                      className="pl-10 h-11 bg-black/40 border-white/30 text-white placeholder:text-white/40 focus-visible:ring-white/50 focus-visible:border-white"
                       placeholder="Enter email address..."
                       required
                     />
@@ -187,15 +186,15 @@ export default function LoginPage() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label htmlFor="username" className="text-cyan-50 font-medium ml-1">Username</Label>
+                  <Label htmlFor="username" className="text-white/80 font-medium ml-1">Username</Label>
                   <div className="relative">
-                    <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-cyan-300/70" />
+                    <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/60" />
                     <Input
                       id="username"
                       value={regUsername}
                       onChange={(e) => setRegUsername(e.target.value)}
                       autoComplete="username"
-                      className="pl-10 h-11 bg-black/40 border-cyan-500/30 text-white placeholder:text-cyan-100/40 focus-visible:ring-cyan-500/50 focus-visible:border-cyan-400"
+                      className="pl-10 h-11 bg-black/40 border-white/30 text-white placeholder:text-white/40 focus-visible:ring-white/50 focus-visible:border-white"
                       placeholder="Choose a username..."
                       required
                     />
@@ -203,23 +202,23 @@ export default function LoginPage() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label htmlFor="regPassword" className="text-cyan-50 font-medium ml-1">Password</Label>
+                  <Label htmlFor="regPassword" className="text-white/80 font-medium ml-1">Password</Label>
                   <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-cyan-300/70" />
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/60" />
                     <Input
                       id="regPassword"
                       type="password"
                       value={regPassword}
                       onChange={(e) => setRegPassword(e.target.value)}
                       autoComplete="new-password"
-                      className="pl-10 h-11 bg-black/40 border-cyan-500/30 text-white placeholder:text-cyan-100/40 focus-visible:ring-cyan-500/50 focus-visible:border-cyan-400"
-                      placeholder="••••••••"
+                      className="pl-10 h-11 bg-black/40 border-white/30 text-white placeholder:text-white/40 focus-visible:ring-white/50 focus-visible:border-white"
+                      placeholder="•••••"
                       required
                     />
                   </div>
                 </div>
 
-                <Button type="submit" disabled={loading} className="w-full h-11 bg-cyan-500 hover:bg-cyan-400 text-cyan-950 font-bold border border-cyan-400/50 shadow-[0_0_15px_rgba(0,219,255,0.3)] transition-all mt-6">
+                <Button type="submit" disabled={loading} className="w-full h-11 bg-white text-black font-bold border border-white/30 transition-all mt-6">
                   {loading ? "Creating account..." : "Create account"}
                   <ArrowRight className="w-4 h-4 ml-1" />
                 </Button>
@@ -227,9 +226,9 @@ export default function LoginPage() {
             )}
           </AnimatePresence>
 
-          {error ? <p className="mt-4 text-sm text-red-400/90 font-medium text-center relative z-10 bg-red-950/40 border border-red-500/50 rounded-lg py-2 px-3">{error}</p> : null}
+          {error ? <p className="mt-4 text-sm text-white/90 font-medium text-center relative z-10 bg-black/40 border border-white/50 rounded-lg py-2 px-3">{error}</p> : null}
         </ParticleCard>
       </motion.div>
-    </AuthShell >
+    </AuthShell>
   );
 }

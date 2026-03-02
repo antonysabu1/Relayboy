@@ -27,7 +27,6 @@ export default function AuthShell({
     <PageTransition>
       <AnimatedBackground />
       <div className="min-h-screen flex items-center justify-center p-4 relative z-10 bento-section" ref={shellRef}>
-        <GlobalSpotlight gridRef={shellRef as any} glowColor="0, 219, 255" spotlightRadius={600} />
         <div className={`w-full ${maxWidthClassName} relative z-20`}>
           <motion.div initial={{ y: -16, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="text-center mb-8 pointer-events-none">
             <div className="inline-flex items-center justify-center w-16 h-16 gradient-primary rounded-2xl shadow-[0_0_20px_rgba(0,219,255,0.4)] glow-primary mb-4 p-4 border border-cyan-400/30">
