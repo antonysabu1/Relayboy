@@ -7,13 +7,22 @@
 
 import { MlKem768 } from 'crystals-kyber-js';
 
-// Utility functions
+// Utility functions (browser-compatible)
 export function uint8ArrayToBase64(bytes: Uint8Array): string {
-  return Buffer.from(bytes).toString('base64');
+  let binary = "";
+  for (let i = 0; i < bytes.length; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
 }
 
 export function base64ToUint8Array(base64: string): Uint8Array {
-  return new Uint8Array(Buffer.from(base64, 'base64'));
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes;
 }
 
 export function arraysEqual(a: Uint8Array, b: Uint8Array): boolean {
@@ -47,12 +56,12 @@ export class KyberDecapsulator {
     console.log('⚠️  Using CRYSTALS-Kyber Module-LWE (NOT ECDH)');
     console.log(`📥 Using lattice-based ciphertext of length: ${ciphertext.length} bytes`);
     console.log(`🔐 Using lattice-based private key of length: ${privateKey.length} bytes`);
-    
+
     const sharedSecret = await this.kem.decap(ciphertext, privateKey);
-    
+
     console.log('✅ Lattice-based decapsulation successful!');
     console.log(`🔑 Shared secret length: ${sharedSecret.length} bytes`);
-    
+
     return sharedSecret;
   }
 
