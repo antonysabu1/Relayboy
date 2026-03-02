@@ -3,11 +3,21 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { MessageCircle, Mail, User, Lock, ArrowRight, Shield } from "lucide-react";
+import { MessageCircle, Mail, User, Lock, ArrowRight, Shield, KeyRound, AlertTriangle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import AuthShell from "@/components/layout/AuthShell";
+import { secureDB } from "@/lib/db";
+import { decryptPrivateKey } from "@/lib/keyBackup";
 
-type AuthMode = "login" | "register";
+type AuthMode = "login" | "register" | "restore";
+
+interface PendingBackup {
+  username: string;
+  encryptedBlob: string;
+  salt: string;
+  iv: string;
+  publicKey: string | null;
+}
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -20,6 +30,43 @@ export default function LoginPage() {
   const [regEmail, setRegEmail] = useState("");
   const [regUsername, setRegUsername] = useState("");
   const [regPassword, setRegPassword] = useState("");
+  const [masterPassword, setMasterPassword] = useState("");
+  const [pendingBackup, setPendingBackup] = useState<PendingBackup | null>(null);
+
+  const handleRestoreKeys = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!pendingBackup) return;
+    if (masterPassword.length < 1) {
+      setError("Enter your master password.");
+      return;
+    }
+
+    setLoading(true);
+    setError("");
+
+    try {
+      const privateKeyB64 = await decryptPrivateKey(
+        pendingBackup.encryptedBlob,
+        pendingBackup.salt,
+        pendingBackup.iv,
+        masterPassword
+      );
+
+      await secureDB.saveUserKeys({
+        username: pendingBackup.username.toLowerCase(),
+        privateKey: privateKeyB64,
+        publicKey: pendingBackup.publicKey || "",
+        createdAt: Date.now(),
+      });
+
+      console.log("✅ Private key restored from backup!");
+      navigate("/chat");
+    } catch {
+      setError("Incorrect master password. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,7 +81,30 @@ export default function LoginPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Login failed");
-      navigate("/chat");
+
+      // Check if we already have keys locally
+      const existingKeys = await secureDB.getUserKeys(data.username);
+      if (existingKeys) {
+        // Keys exist locally, go straight to chat
+        navigate("/chat");
+        return;
+      }
+
+      // No local keys — need to restore from backup
+      if (data.encrypted_private_key && data.backup_salt && data.backup_iv) {
+        // Store backup data and prompt for master password
+        setPendingBackup({
+          username: data.username,
+          encryptedBlob: data.encrypted_private_key,
+          salt: data.backup_salt,
+          iv: data.backup_iv,
+          publicKey: null, // We'll fetch it if needed
+        });
+        setMode("restore");
+      } else {
+        // No backup exists — just go to chat (messages will be unreadable)
+        navigate("/chat");
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed");
     } finally {
@@ -63,6 +133,61 @@ export default function LoginPage() {
       setLoading(false);
     }
   };
+
+  // Restore keys screen (early return)
+  if (mode === "restore") return (
+    <AuthShell
+      title="Restore Encryption Keys"
+      subtitle="Enter your master password to unlock your keys on this device"
+      icon={<KeyRound className="w-8 h-8 text-primary-foreground" />}
+    >
+      <motion.div
+        initial={{ scale: 0.97, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        className="glass-card quantum-card rounded-[2rem] p-6 sm:p-8 border border-border/70"
+      >
+        <div className="flex items-center gap-3 p-3 rounded-xl border border-border/70 bg-amber-500/10 mb-5">
+          <AlertTriangle className="w-5 h-5 text-amber-500 flex-shrink-0" />
+          <p className="text-xs text-amber-200/80">
+            Your encrypted key backup was found. Enter your <strong>Master Password</strong> (set during registration) to restore access to your messages.
+          </p>
+        </div>
+
+        <form onSubmit={handleRestoreKeys} className="space-y-4">
+          <div className="space-y-1.5">
+            <Label htmlFor="restoreMasterPw">Master Password</Label>
+            <div className="relative">
+              <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                id="restoreMasterPw"
+                type="password"
+                value={masterPassword}
+                onChange={(e) => setMasterPassword(e.target.value)}
+                placeholder="Enter your master password"
+                autoComplete="off"
+                className="pl-10 h-11 glass-input"
+                required
+                autoFocus
+              />
+            </div>
+          </div>
+
+          <Button type="submit" disabled={loading} className="w-full h-11 gradient-primary text-primary-foreground font-semibold">
+            {loading ? "Decrypting..." : "Restore My Keys"}
+            <ArrowRight className="w-4 h-4 ml-1" />
+          </Button>
+        </form>
+
+        {error ? <p className="mt-4 text-sm text-destructive font-medium text-center">{error}</p> : null}
+
+        <div className="mt-6 text-center">
+          <button type="button" onClick={() => { setMode("login"); setError(""); setMasterPassword(""); }} className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+            ← Back to sign in
+          </button>
+        </div>
+      </motion.div>
+    </AuthShell>
+  );
 
   return (
     <AuthShell

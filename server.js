@@ -191,6 +191,7 @@ app.post("/register", async (req, res) => {
 // ---------------- VERIFY OTP ----------------
 app.post("/verify-register-otp", async (req, res) => {
   const { email, otp } = req.body;
+  const { kyber_public_key, encrypted_private_key, backup_salt, backup_iv } = req.body;
   console.log(`[Verify OTP] Attempt for email: ${email}`);
 
   try {
@@ -211,7 +212,6 @@ app.post("/verify-register-otp", async (req, res) => {
       return res.status(400).json({ error: "Missing Kyber public key" });
     }
 
-    console.log("[Verify OTP] Inserting user into Supabase (non-custodial)...");
     const { error: insertError } = await withRetry(() =>
       supabase.from("users").insert([{
         email: pending.email,
@@ -219,6 +219,9 @@ app.post("/verify-register-otp", async (req, res) => {
         password_hash: pending.password_hash,
         is_verified: true,
         kyber_public_key: kyber_public_key,
+        encrypted_private_key: encrypted_private_key || null,
+        backup_salt: backup_salt || null,
+        backup_iv: backup_iv || null,
         // kyber_private_key is NOT stored here anymore (E2EE)
       }])
     );
@@ -261,7 +264,14 @@ app.post("/login", async (req, res) => {
   req.session.username = user.username;
   req.session.avatar_url = user.avatar_url;
 
-  res.json({ ok: true, avatar_url: user.avatar_url });
+  res.json({
+    ok: true,
+    avatar_url: user.avatar_url,
+    username: user.username,
+    encrypted_private_key: user.encrypted_private_key || null,
+    backup_salt: user.backup_salt || null,
+    backup_iv: user.backup_iv || null,
+  });
 });
 
 // ---------------- PROFILE UPDATE ----------------
