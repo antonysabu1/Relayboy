@@ -83,150 +83,159 @@ export default function LoginPage() {
         className="w-full"
       >
         <ParticleCard
-          className="magic-bento-card magic-bento-card--border-glow w-full p-6 sm:p-8 rounded-[2rem] border border-white/20 shadow-[0_0_30px_rgba(255,255,255,0.15)]"
-          style={{ backgroundColor: 'rgba(255, 255, 255, 0.1)', '--glow-color': '255, 255, 255' } as any}
+          className="w-full rounded-[2rem] border border-white/10 p-2 md:rounded-[2.5rem] md:p-3 bg-black/10 backdrop-blur-md shadow-2xl"
           enableTilt={true}
-          glowColor="255, 255, 255"
+          clickEffect={true}
         >
-          <div className="grid grid-cols-2 gap-2 rounded-xl border border-white/30 p-1 bg-black/40 mb-6 relative z-10 pointer-events-auto">
-            <button
-              type="button"
-              onClick={() => {
-                setMode("login");
-                setError("");
-              }}
-              className={`h-9 rounded-lg text-sm font-semibold transition ${mode === "login" ? "bg-white/20 text-white border border-white/30" : "text-white/50 hover:text-white/80 hover:bg-white/10"}`}
-            >
-              Sign in
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setMode("register");
-                setError("");
-              }}
-              className={`h-9 rounded-lg text-sm font-semibold transition ${mode === "register" ? "bg-white/20 text-white border border-white/30" : "text-white/50 hover:text-white/80 hover:bg-white/10"}`}
-            >
-              Register
-            </button>
+          <div className="relative flex flex-col overflow-hidden rounded-[1.5rem] md:rounded-[2rem] p-6 md:p-8 bg-[#0A0F19]/60 border border-white/5 h-full w-full">
+            <div className="grid grid-cols-2 gap-2 rounded-xl border border-white/10 p-1 bg-black/40 mb-8 relative z-10 pointer-events-auto">
+              <button
+                type="button"
+                onClick={() => {
+                  setMode("login");
+                  setError("");
+                }}
+                className={`h-10 rounded-lg text-sm font-bold uppercase tracking-wider transition-all ${mode === "login" ? "bg-white/10 text-white border border-white/20 shadow-lg" : "text-white/40 hover:text-white/70 hover:bg-white/5"}`}
+              >
+                Sign in
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setMode("register");
+                  setError("");
+                }}
+                className={`h-10 rounded-lg text-sm font-bold uppercase tracking-wider transition-all ${mode === "register" ? "bg-white/10 text-white border border-white/20 shadow-lg" : "text-white/40 hover:text-white/70 hover:bg-white/5"}`}
+              >
+                Register
+              </button>
+            </div>
+
+            <AnimatePresence mode="wait">
+              {mode === "login" ? (
+                <motion.form
+                  key="login"
+                  initial={{ opacity: 0, x: 10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -10 }}
+                  onSubmit={handleLogin}
+                  className="space-y-5 relative z-10 pointer-events-auto"
+                >
+                  <div className="space-y-2">
+                    <Label htmlFor="identifier" className="text-white/60 text-xs font-bold uppercase tracking-widest ml-1">Email or Username</Label>
+                    <div className="relative">
+                      <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
+                      <Input
+                        id="identifier"
+                        value={loginIdentifier}
+                        onChange={(e) => setLoginIdentifier(e.target.value)}
+                        autoComplete="username"
+                        className="pl-12 h-12 bg-black/40 border-white/10 text-white placeholder:text-white/20 focus-visible:ring-cyan-500/50 focus-visible:border-cyan-500/50 rounded-xl"
+                        placeholder="Enter details..."
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="password" className="text-white/60 text-xs font-bold uppercase tracking-widest ml-1">Password</Label>
+                    <div className="relative">
+                      <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
+                      <Input
+                        id="password"
+                        type="password"
+                        value={loginPassword}
+                        onChange={(e) => setLoginPassword(e.target.value)}
+                        autoComplete="current-password"
+                        className="pl-12 h-12 bg-black/40 border-white/10 text-white placeholder:text-white/20 focus-visible:ring-cyan-500/50 focus-visible:border-cyan-500/50 rounded-xl"
+                        placeholder="••••••••"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <Button type="submit" disabled={loading} className="w-full h-14 bg-white text-black font-bold text-lg rounded-xl shadow-[0_0_20px_rgba(255,255,255,0.1)] hover:scale-[1.02] active:scale-95 transition-all mt-4">
+                    {loading ? "Signing in..." : "Sign in"}
+                    <ArrowRight className="w-5 h-5 ml-2" />
+                  </Button>
+                </motion.form>
+              ) : (
+                <motion.form
+                  key="register"
+                  initial={{ opacity: 0, x: 10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -10 }}
+                  onSubmit={handleRegister}
+                  className="space-y-5 relative z-10 pointer-events-auto"
+                >
+                  <div className="space-y-2">
+                    <Label htmlFor="email" className="text-white/60 text-xs font-bold uppercase tracking-widest ml-1">Email</Label>
+                    <div className="relative">
+                      <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
+                      <Input
+                        id="email"
+                        type="email"
+                        value={regEmail}
+                        onChange={(e) => setRegEmail(e.target.value)}
+                        autoComplete="email"
+                        className="pl-12 h-12 bg-black/40 border-white/10 text-white placeholder:text-white/20 focus-visible:ring-cyan-500/50 focus-visible:border-cyan-500/50 rounded-xl"
+                        placeholder="Enter email address..."
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="username" className="text-white/60 text-xs font-bold uppercase tracking-widest ml-1">Username</Label>
+                    <div className="relative">
+                      <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
+                      <Input
+                        id="username"
+                        value={regUsername}
+                        onChange={(e) => setRegUsername(e.target.value)}
+                        autoComplete="username"
+                        className="pl-12 h-12 bg-black/40 border-white/10 text-white placeholder:text-white/20 focus-visible:ring-cyan-500/50 focus-visible:border-cyan-500/50 rounded-xl"
+                        placeholder="Choose a username..."
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="regPassword" className="text-white/60 text-xs font-bold uppercase tracking-widest ml-1">Password</Label>
+                    <div className="relative">
+                      <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
+                      <Input
+                        id="regPassword"
+                        type="password"
+                        value={regPassword}
+                        onChange={(e) => setRegPassword(e.target.value)}
+                        autoComplete="new-password"
+                        className="pl-12 h-12 bg-black/40 border-white/10 text-white placeholder:text-white/20 focus-visible:ring-cyan-500/50 focus-visible:border-cyan-500/50 rounded-xl"
+                        placeholder="••••••••"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <Button type="submit" disabled={loading} className="w-full h-14 bg-white text-black font-bold text-lg rounded-xl shadow-[0_0_20px_rgba(255,255,255,0.1)] hover:scale-[1.02] active:scale-95 transition-all mt-4">
+                    {loading ? "Creating account..." : "Create account"}
+                    <ArrowRight className="w-5 h-5 ml-2" />
+                  </Button>
+                </motion.form>
+              )}
+            </AnimatePresence>
+
+            {error ? (
+              <motion.p
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mt-6 text-sm text-red-400 font-medium text-center relative z-10 bg-red-500/10 border border-red-500/20 rounded-xl py-3 px-4"
+              >
+                {error}
+              </motion.p>
+            ) : null}
           </div>
-
-          <AnimatePresence mode="wait">
-            {mode === "login" ? (
-              <motion.form
-                key="login"
-                initial={{ opacity: 0, x: 8 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -8 }}
-                onSubmit={handleLogin}
-                className="space-y-4 relative z-10 pointer-events-auto"
-              >
-                <div className="space-y-1.5">
-                  <Label htmlFor="identifier" className="text-white/80 font-medium ml-1">Email or Username</Label>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/60" />
-                    <Input
-                      id="identifier"
-                      value={loginIdentifier}
-                      onChange={(e) => setLoginIdentifier(e.target.value)}
-                      autoComplete="username"
-                      className="pl-10 h-11 bg-black/40 border-white/30 text-white placeholder:text-white/40 focus-visible:ring-white/50 focus-visible:border-white"
-                      placeholder="Enter details..."
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-1.5">
-                  <Label htmlFor="password" className="text-white/80 font-medium ml-1">Password</Label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/60" />
-                    <Input
-                      id="password"
-                      type="password"
-                      value={loginPassword}
-                      onChange={(e) => setLoginPassword(e.target.value)}
-                      autoComplete="current-password"
-                      className="pl-10 h-11 bg-black/40 border-white/30 text-white placeholder:text-white/40 focus-visible:ring-white/50 focus-visible:border-white"
-                      placeholder="••••••••"
-                      required
-                    />
-                  </div>
-                </div>
-
-                <Button type="submit" disabled={loading} className="w-full h-11 bg-white text-black font-bold border border-white/30 transition-all mt-6">
-                  {loading ? "Signing in..." : "Sign in"}
-                  <ArrowRight className="w-4 h-4 ml-1" />
-                </Button>
-              </motion.form>
-            ) : (
-              <motion.form
-                key="register"
-                initial={{ opacity: 0, x: 8 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -8 }}
-                onSubmit={handleRegister}
-                className="space-y-4 relative z-10 pointer-events-auto"
-              >
-                <div className="space-y-1.5">
-                  <Label htmlFor="email" className="text-white/80 font-medium ml-1">Email</Label>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/60" />
-                    <Input
-                      id="email"
-                      type="email"
-                      value={regEmail}
-                      onChange={(e) => setRegEmail(e.target.value)}
-                      autoComplete="email"
-                      className="pl-10 h-11 bg-black/40 border-white/30 text-white placeholder:text-white/40 focus-visible:ring-white/50 focus-visible:border-white"
-                      placeholder="Enter email address..."
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-1.5">
-                  <Label htmlFor="username" className="text-white/80 font-medium ml-1">Username</Label>
-                  <div className="relative">
-                    <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/60" />
-                    <Input
-                      id="username"
-                      value={regUsername}
-                      onChange={(e) => setRegUsername(e.target.value)}
-                      autoComplete="username"
-                      className="pl-10 h-11 bg-black/40 border-white/30 text-white placeholder:text-white/40 focus-visible:ring-white/50 focus-visible:border-white"
-                      placeholder="Choose a username..."
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-1.5">
-                  <Label htmlFor="regPassword" className="text-white/80 font-medium ml-1">Password</Label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/60" />
-                    <Input
-                      id="regPassword"
-                      type="password"
-                      value={regPassword}
-                      onChange={(e) => setRegPassword(e.target.value)}
-                      autoComplete="new-password"
-                      className="pl-10 h-11 bg-black/40 border-white/30 text-white placeholder:text-white/40 focus-visible:ring-white/50 focus-visible:border-white"
-                      placeholder="•••••"
-                      required
-                    />
-                  </div>
-                </div>
-
-                <Button type="submit" disabled={loading} className="w-full h-11 bg-white text-black font-bold border border-white/30 transition-all mt-6">
-                  {loading ? "Creating account..." : "Create account"}
-                  <ArrowRight className="w-4 h-4 ml-1" />
-                </Button>
-              </motion.form>
-            )}
-          </AnimatePresence>
-
-          {error ? <p className="mt-4 text-sm text-white/90 font-medium text-center relative z-10 bg-black/40 border border-white/50 rounded-lg py-2 px-3">{error}</p> : null}
         </ParticleCard>
       </motion.div>
     </AuthShell>

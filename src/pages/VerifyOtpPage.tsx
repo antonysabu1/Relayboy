@@ -70,52 +70,60 @@ export default function VerifyOtpPage() {
     >
       <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="w-full">
         <ParticleCard
-          className="magic-bento-card magic-bento-card--border-glow w-full p-6 sm:p-8 rounded-[2rem] border border-white/30 shadow-[0_0_30px_rgba(255,255,255,0.15)]"
-          style={{ backgroundColor: 'rgba(255, 255, 255, 0.1)', '--glow-color': '255, 255, 255' } as any}
+          className="w-full rounded-[2rem] border border-white/10 p-2 md:rounded-[2.5rem] md:p-3 bg-black/10 backdrop-blur-md shadow-2xl"
           enableTilt={true}
           clickEffect={true}
-          glowColor="255, 255, 255"
         >
-          <div className="flex items-center gap-3 p-3 rounded-xl border border-white/30 bg-black/40 mb-7 relative z-10 pointer-events-none">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center">
-              <Mail className="w-5 h-5 text-white" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-xs uppercase tracking-widest text-white/80">Sending To</p>
-              <p className="text-sm font-semibold truncate text-white">{email || "your email"}</p>
-            </div>
-            <div className="ml-auto text-xs font-bold text-white/60">
-              {minutes}:{seconds}
-            </div>
-          </div>
-
-          <form onSubmit={handleVerify} className="space-y-7 relative z-10 pointer-events-auto">
-            <div className="flex flex-col items-center gap-3">
-              <InputOTP maxLength={6} value={otp} onChange={(value) => setOtp(value)} aria-label="One-time password" containerClassName="justify-center">
-                <InputOTPGroup className="gap-2">
-                  {[0, 1, 2, 3, 4, 5].map((index) => (
-                    <InputOTPSlot key={index} index={index} className="h-12 w-12 rounded-xl border border-white/30 bg-black/40 text-lg font-bold text-white focus:border-white focus:ring-2 focus:ring-white/50 focus:bg-white/[0.06]" />
-                  ))}
-                </InputOTPGroup>
-              </InputOTP>
-              <p className="text-xs text-white/60 flex items-center gap-1.5 mt-2">
-                <Lock className="w-3 h-3 text-white/60" />
-                Check inbox or spam if code is delayed.
-              </p>
+          <div className="relative flex flex-col overflow-hidden rounded-[1.5rem] md:rounded-[2rem] p-6 md:p-8 bg-[#0A0F19]/60 border border-white/5 h-full w-full">
+            <div className="flex items-center gap-4 p-4 rounded-xl border border-white/10 bg-black/40 mb-8 relative z-10 pointer-events-none">
+              <div className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center border border-white/10">
+                <Mail className="w-6 h-6 text-white/70" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-[10px] uppercase tracking-widest text-white/40 font-bold">Verification Sent To</p>
+                <p className="text-sm font-bold truncate text-white">{email || "your email"}</p>
+              </div>
+              <div className="text-xs font-bold text-cyan-400 bg-cyan-500/10 px-3 py-1.5 rounded-lg border border-cyan-500/20 tabular-nums">
+                {minutes}:{seconds}
+              </div>
             </div>
 
-            <Button type="submit" disabled={loading} className="w-full h-11 bg-white text-black font-bold border border-white/30 transition-all">
-              {loading ? "Verifying..." : "Verify & Continue"}
-              <ArrowRight className="w-4 h-4 ml-1" />
-            </Button>
-          </form>
+            <form onSubmit={handleVerify} className="space-y-8 relative z-10 pointer-events-auto">
+              <div className="flex flex-col items-center gap-4">
+                <InputOTP maxLength={6} value={otp} onChange={(value) => setOtp(value)} aria-label="One-time password" containerClassName="justify-center">
+                  <InputOTPGroup className="gap-3">
+                    {[0, 1, 2, 3, 4, 5].map((index) => (
+                      <InputOTPSlot key={index} index={index} className="h-14 w-14 rounded-xl border border-white/10 bg-black/40 text-xl font-bold text-white focus:border-cyan-500/50 focus:ring-4 focus:ring-cyan-500/10 focus:bg-white/[0.05] transition-all" />
+                    ))}
+                  </InputOTPGroup>
+                </InputOTP>
+                <p className="text-[11px] text-white/30 flex items-center gap-2 mt-2 font-medium">
+                  <Lock className="w-3.5 h-3.5" />
+                  Check your inbox or spam folder for the secure code.
+                </p>
+              </div>
 
-          {error ? <p className="mt-4 text-sm text-red-400/90 font-medium text-center relative z-10 bg-red-950/40 border border-red-500/50 rounded-lg py-2 px-3">{error}</p> : null}
+              <Button type="submit" disabled={loading} className="w-full h-14 bg-white text-black font-bold text-lg rounded-xl shadow-[0_0_20px_rgba(255,255,255,0.1)] hover:scale-[1.02] active:scale-95 transition-all">
+                {loading ? "Verifying..." : "Verify & Continue"}
+                <ArrowRight className="w-5 h-5 ml-2" />
+              </Button>
+            </form>
 
-          <div className="mt-6 text-center relative z-10 pointer-events-auto">
-            <button type="button" onClick={() => navigate("/login")} className="text-sm text-white/60 hover:text-white transition-colors">
-              Back to sign in
-            </button>
+            {error ? (
+              <motion.p
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mt-6 text-sm text-red-400 font-medium text-center relative z-10 bg-red-500/10 border border-red-500/20 rounded-xl py-3 px-4"
+              >
+                {error}
+              </motion.p>
+            ) : null}
+
+            <div className="mt-8 text-center relative z-10 pointer-events-auto">
+              <button type="button" onClick={() => navigate("/login")} className="text-sm font-bold uppercase tracking-widest text-white/40 hover:text-white transition-colors">
+                Back to sign in
+              </button>
+            </div>
           </div>
         </ParticleCard>
       </motion.div>

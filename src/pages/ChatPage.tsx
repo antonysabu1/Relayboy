@@ -429,40 +429,35 @@ export default function ChatPage() {
       <AnimatedBackground />
       <div className="h-screen flex flex-col relative z-10 bento-section" ref={dashboardRef}>
 
-        <header className="h-16 md:h-20 w-full border-b border-white/5 z-50 relative bento-section" ref={headerRef}>
-          <ParticleCard
-            className="w-full h-full px-4 md:px-8 flex flex-row items-center justify-between glass"
-            style={{ backgroundColor: 'transparent', borderRadius: 0 } as any}
-            enableTilt={false}
-            glowColor="0, 219, 255"
-          >
-            <div className="flex items-center gap-3 min-w-0 relative z-10 pointer-events-none">
-              <div className="w-11 h-11 md:w-12 md:h-12 rounded-2xl gradient-primary text-primary-foreground flex items-center justify-center shadow-[0_0_20px_rgba(0,219,255,0.3)] glow-primary">
-                <MessageCircle className="w-6 h-6" />
+        <header className="h-20 w-full border-b border-white/5 z-50 relative bg-black/40 backdrop-blur-md" ref={headerRef}>
+          <div className="max-w-[1400px] mx-auto h-full px-4 sm:px-8 lg:px-12 flex flex-row items-center justify-between">
+            <div className="flex items-center gap-4 relative z-10">
+              <div className="w-12 h-12 rounded-2xl bg-white flex items-center justify-center border border-white/20 shadow-lg">
+                <MessageCircle className="w-7 h-7 text-black" strokeWidth={2} />
               </div>
-              <div className="min-w-0">
-                <p className="font-display font-bold text-lg md:text-xl truncate text-white tracking-tight">RelayBoy</p>
-                <p className="text-[10px] uppercase tracking-[0.2em] text-cyan-400 font-bold drop-shadow-[0_0_8px_rgba(0,219,255,0.4)]">
-                  {reconnectAttempt > 0 ? `Reconnecting (${reconnectAttempt})` : "Secure Session"}
-                </p>
+              <div className="flex flex-col">
+                <span className="text-2xl font-display font-bold text-white tracking-tighter">RelayBoy</span>
+                <span className="text-[10px] uppercase tracking-[0.2em] text-cyan-400 font-bold drop-shadow-[0_0_8px_rgba(0,219,255,0.4)]">
+                  {reconnectAttempt > 0 ? `Reconnecting (${reconnectAttempt})` : "Encrypted Stream"}
+                </span>
               </div>
             </div>
 
-            <div className="flex items-center gap-2 md:gap-4 relative z-10">
+            <div className="flex items-center gap-4 md:gap-6 relative z-10">
               {isMobile ? (
-                <Button variant="outline" size="icon" className="rounded-xl border-white/10 bg-white/5 hover:bg-white/10" onClick={() => setIsUsersSheetOpen(true)}>
-                  <PanelLeft className="w-4 h-4 text-white" />
+                <Button variant="outline" size="icon" className="h-11 w-11 rounded-xl border-white/10 bg-white/5 hover:bg-white/10" onClick={() => setIsUsersSheetOpen(true)}>
+                  <PanelLeft className="w-5 h-5 text-white" />
                 </Button>
               ) : null}
 
               <Dialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
                 <DialogTrigger asChild>
-                  <button className="rounded-full transition-transform hover:scale-105 active:scale-95" aria-label="Open settings">
-                    <AvatarBadge name={username || "?"} avatarUrl={avatarUrl} isOnline size="md" />
+                  <button className="rounded-full transition-transform hover:scale-105 active:scale-95 group relative" aria-label="Open settings">
+                    <div className="absolute -inset-1 bg-cyan-500/20 blur-md rounded-full opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <AvatarBadge name={username || "?"} avatarUrl={avatarUrl} isOnline size="md" className="relative z-10 h-11 w-11" />
                   </button>
                 </DialogTrigger>
                 <DialogContent className="max-w-md rounded-3xl border-white/10 glass-card p-0 overflow-hidden shadow-[0_30px_60px_-15px_rgba(0,0,0,0.6)]">
-                  {/* Dialog content remains mostly same but with better theme matching */}
                   <div className="h-24 gradient-primary" />
                   <div className="px-6 pb-6 -mt-10">
                     <div className="flex items-end justify-between gap-4 mb-6">
@@ -518,98 +513,103 @@ export default function ChatPage() {
                 </DialogContent>
               </Dialog>
 
-              <div className="pointer-events-none">
+              <div className="pointer-events-none hidden sm:block">
                 <ConnectionStatus status={status} username={username} />
               </div>
             </div>
-          </ParticleCard>
+          </div>
         </header>
 
         <div className="flex-1 flex overflow-hidden p-2 md:p-4 gap-3 relative z-20">
-          <aside className="hidden md:flex w-[330px] flex-col h-full">
+          <aside className="hidden md:flex w-[340px] flex-col h-full rounded-3xl overflow-hidden shadow-2xl">
             <ParticleCard
-              className="magic-bento-card magic-bento-card--border-glow w-full h-full flex flex-col p-0 overflow-hidden rounded-3xl border border-cyan-500/20 shadow-[0_0_20px_rgba(0,219,255,0.1)]"
-              style={{ backgroundColor: 'rgba(10, 15, 25, 0.4)', '--glow-color': '0, 219, 255' } as any}
+              className="w-full h-full rounded-3xl border border-white/10 p-2 bg-black/10 backdrop-blur-md"
               enableTilt={false}
-              glowColor="0, 219, 255"
             >
-              {UsersPanel}
+              <div className="relative flex-1 flex flex-col overflow-hidden rounded-2xl bg-[#0A0F19]/60 border border-white/5 h-full">
+                {UsersPanel}
+              </div>
             </ParticleCard>
           </aside>
 
-          <main className="flex-1 flex flex-col h-full">
+          <main className="flex-1 flex flex-col h-full rounded-3xl overflow-hidden shadow-2xl group">
             <ParticleCard
-              className="magic-bento-card magic-bento-card--border-glow w-full h-full flex flex-col p-0 overflow-hidden rounded-3xl border border-cyan-500/20 shadow-[0_0_20px_rgba(0,219,255,0.1)]"
-              style={{ backgroundColor: 'rgba(10, 15, 25, 0.4)', '--glow-color': '0, 219, 255' } as any}
+              className="w-full h-full rounded-3xl border border-white/10 p-2 bg-black/10 backdrop-blur-md"
               enableTilt={false}
-              glowColor="0, 219, 255"
             >
-              {currentChat ? (
-                <div className="flex flex-col h-full w-full relative z-10 pointer-events-auto">
-                  <div className="h-16 px-4 md:px-6 border-b border-border/70 flex items-center justify-between pointer-events-none relative z-10">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <AvatarBadge
-                        name={currentChat}
-                        avatarUrl={currentChatUser?.avatar_url}
-                        isOnline={!!currentChatUser?.is_online}
-                        size="md"
-                      />
-                      <div className="min-w-0 flex flex-col">
-                        <div className="flex items-center gap-2"  >
-                          <p className="font-semibold truncate text-white">{currentChat}</p>
-                          <div className="flex items-center gap-1 text-[10px] uppercase font-bold text-emerald-400 bg-emerald-950/40 px-2 py-0.5 rounded-full border border-emerald-500/20">
-                            <LockKeyhole className="w-3 h-3" />
-                            <span>E2E Encrypted</span>
+              <div className="relative flex-1 flex flex-col overflow-hidden rounded-2xl bg-[#0A0F19]/60 border border-white/5 h-full">
+                {currentChat ? (
+                  <div className="flex flex-col h-full w-full relative z-10 pointer-events-auto">
+                    <div className="h-16 px-6 border-b border-white/5 flex items-center justify-between pointer-events-none relative z-10 bg-black/20">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <AvatarBadge
+                          name={currentChat}
+                          avatarUrl={currentChatUser?.avatar_url}
+                          isOnline={!!currentChatUser?.is_online}
+                          size="md"
+                        />
+                        <div className="min-w-0 flex flex-col">
+                          <div className="flex items-center gap-2"  >
+                            <p className="font-bold truncate text-white tracking-tight">{currentChat}</p>
+                            <div className="flex items-center gap-1.5 text-[9px] uppercase font-bold text-cyan-400 bg-cyan-500/10 px-2 py-1 rounded-full border border-cyan-500/20">
+                              <LockKeyhole className="w-2.5 h-2.5" />
+                              <span>E2E Active</span>
+                            </div>
                           </div>
+                          <p className="text-[10px] uppercase tracking-widest text-white/30 font-bold">{currentChatUser?.is_online ? "Receiver Online" : "Receiver Offline"}</p>
                         </div>
-                        <p className="text-xs text-muted-foreground">{currentChatUser?.is_online ? "Online" : "Offline"}</p>
                       </div>
+
+                      <button className="w-10 h-10 rounded-xl border border-white/10 bg-white/5 flex items-center justify-center pointer-events-auto hover:bg-white/10 hover:text-white transition-colors">
+                        <MoreVertical className="w-4 h-4 text-white/40" />
+                      </button>
                     </div>
 
-                    <button className="w-9 h-9 rounded-xl border border-border/70 bg-card/60 flex items-center justify-center pointer-events-auto hover:bg-white/5 hover:text-white transition-colors">
-                      <MoreVertical className="w-4 h-4 text-muted-foreground" />
-                    </button>
-                  </div>
+                    <div className="flex-1 overflow-y-auto p-4 md:p-8 flex flex-col gap-6 scrollbar-thin overflow-x-hidden relative z-10 pointer-events-auto">
+                      {currentMessages.length === 0 ? (
+                        <div className="flex-1 flex flex-col items-center justify-center text-center p-8">
+                          <div className="w-16 h-16 rounded-3xl bg-white/5 flex items-center justify-center border border-white/10 mb-6">
+                            <MessageCircle className="w-8 h-8 text-white/20" />
+                          </div>
+                          <p className="font-bold text-white text-lg">Absolute Privacy.</p>
+                          <p className="text-sm text-white/30 max-w-[240px] mt-2">Zero metadata will be leaked while communicating with @{currentChat}.</p>
+                        </div>
+                      ) : (
+                        currentMessages.map((msg, index) => (
+                          <ChatBubble
+                            key={String(msg.id ?? `${msg.from}-${msg.timestamp}-${index}`)}
+                            message={msg.message}
+                            timestamp={msg.timestamp}
+                            isSent={msg.from === username}
+                            isSeen={msg.is_seen}
+                            deliveryStatus={msg.delivery_status}
+                            senderName={msg.from !== username ? msg.from : undefined}
+                          />
+                        ))
+                      )}
+                      <div ref={messagesEndRef} />
+                    </div>
 
-                  <div className="flex-1 overflow-y-auto p-4 md:p-6 flex flex-col gap-4 scrollbar-thin overflow-x-hidden relative z-10 pointer-events-auto">
-                    {currentMessages.length === 0 ? (
-                      <div className="flex-1 flex flex-col items-center justify-center text-center">
-                        <MessageCircle className="w-12 h-12 text-primary mb-4" />
-                        <p className="font-semibold">No messages yet</p>
-                        <p className="text-sm text-muted-foreground">Start a secure conversation with @{currentChat}</p>
+                    <div className="p-4 md:p-6 border-t border-white/5 relative z-10 pointer-events-auto bg-black/20">
+                      <ChatInput onSend={handleSendMessage} disabled={status !== "connected"} placeholder={`Message ${currentChat}...`} />
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex-1 flex flex-col items-center justify-center text-center px-12 pointer-events-none relative z-10">
+                    <div className="relative mb-8">
+                      <div className="absolute -inset-8 bg-cyan-500/20 blur-[50px] rounded-full animate-pulse" />
+                      <div className="w-24 h-24 rounded-[2rem] bg-black/40 border border-white/10 flex items-center justify-center shadow-2xl relative z-10">
+                        <Users className="w-12 h-12 text-white/80" strokeWidth={1} />
                       </div>
-                    ) : (
-                      currentMessages.map((msg, index) => (
-                        <ChatBubble
-                          key={String(msg.id ?? `${msg.from}-${msg.timestamp}-${index}`)}
-                          message={msg.message}
-                          timestamp={msg.timestamp}
-                          isSent={msg.from === username}
-                          isSeen={msg.is_seen}
-                          deliveryStatus={msg.delivery_status}
-                          senderName={msg.from !== username ? msg.from : undefined}
-                        />
-                      ))
-                    )}
-                    <div ref={messagesEndRef} />
+                    </div>
+                    <p className="font-display font-bold text-3xl text-white mb-3 tracking-tighter">Your secure world.</p>
+                    <p className="text-sm text-white/40 mb-10 max-w-[300px] leading-relaxed font-light">Select a conversation to start a zero-trace communication stream via quantum-safe relays.</p>
+                    <Button className="md:hidden bg-white text-black font-bold h-14 px-10 rounded-2xl shadow-2xl pointer-events-auto hover:scale-105 active:scale-95 transition-all" onClick={() => setIsUsersSheetOpen(true)}>
+                      Browse Network
+                    </Button>
                   </div>
-
-                  <div className="p-3 md:p-4 border-t border-border/70 relative z-10 pointer-events-auto">
-                    <ChatInput onSend={handleSendMessage} disabled={status !== "connected"} placeholder={`Message ${currentChat}`} />
-                  </div>
-                </div>
-              ) : (
-                <div className="flex-1 flex flex-col items-center justify-center text-center px-6 pointer-events-none relative z-10">
-                  <div className="w-20 h-20 mb-6 rounded-3xl bg-cyan-950/40 border border-cyan-500/20 flex items-center justify-center shadow-[0_0_30px_rgba(0,219,255,0.1)] glow-primary">
-                    <Users className="w-10 h-10 text-cyan-400 drop-shadow-[0_0_10px_rgba(0,219,255,0.5)]" />
-                  </div>
-                  <p className="font-display font-bold text-2xl text-white mb-2 tracking-tight">Select a conversation</p>
-                  <p className="text-sm text-cyan-100/60 mb-8 max-w-[280px] leading-relaxed">Unread chats are highlighted securely and automatically via the quantum-safe relay stream.</p>
-                  <Button className="md:hidden gradient-primary text-primary-foreground border border-cyan-400/30 px-8 py-6 rounded-2xl shadow-[0_0_20px_rgba(0,219,255,0.3)] pointer-events-auto transition-all hover:scale-105 active:scale-95" onClick={() => setIsUsersSheetOpen(true)}>
-                    Browse Users
-                  </Button>
-                </div>
-              )}
+                )}
+              </div>
             </ParticleCard>
           </main>
         </div>
