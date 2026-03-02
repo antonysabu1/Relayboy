@@ -206,19 +206,20 @@ app.post("/verify-register-otp", async (req, res) => {
       return res.status(400).json({ error: "Invalid OTP" });
     }
 
-    console.log("[Verify OTP] Generating Kyber keys for user...");
-    const keyGen = new KyberKeyGenerator();
-    const { publicKey, privateKey } = await keyGen.generateKeyPair();
+    const { kyber_public_key } = req.body;
+    if (!kyber_public_key) {
+      return res.status(400).json({ error: "Missing Kyber public key" });
+    }
 
-    console.log("[Verify OTP] Inserting user into Supabase...");
+    console.log("[Verify OTP] Inserting user into Supabase (non-custodial)...");
     const { error: insertError } = await withRetry(() =>
       supabase.from("users").insert([{
         email: pending.email,
         username: pending.username,
         password_hash: pending.password_hash,
         is_verified: true,
-        kyber_public_key: uint8ArrayToBase64(publicKey),
-        kyber_private_key: uint8ArrayToBase64(privateKey)
+        kyber_public_key: kyber_public_key,
+        // kyber_private_key is NOT stored here anymore (E2EE)
       }])
     );
 
@@ -233,7 +234,7 @@ app.post("/verify-register-otp", async (req, res) => {
     req.session.username = pending.username;
 
     console.log("[Verify OTP] Success");
-    res.json({ ok: true });
+    res.json({ ok: true, username: pending.username });
   } catch (err) {
     console.error("[Verify OTP] Critical Error:", err);
     res.status(500).json({ error: "Verification failed. Please try again later.", details: err.message });
@@ -630,12 +631,10 @@ wss.on("connection", async (ws, req) => {
       else if (data.type === "get_history") {
         const peerKey = data.to;
         const myKey = username;
-        console.log(`📜 Fetching history between ${myKey} and ${peerKey}`);
+        console.log(`📜 Fetching history/handshake for ${myKey} ↔ ${peerKey}`);
 
-        // ---- KYBER HANDSHAKE: Establish shared secret ----
-        let sharedSecretBase64 = null;
+        let handshakeData = null;
         try {
-          // Check if a handshake already exists between these two users (in either direction)
           const { data: existingHandshake, error: hsError } = await withRetry(() =>
             supabase
               .from("handshakes")
@@ -646,82 +645,25 @@ wss.on("connection", async (ws, req) => {
 
           if (hsError) {
             console.error("❌ Handshake lookup error:", hsError);
-          } else if (existingHandshake && existingHandshake.length > 0 && existingHandshake[0].ciphertext) {
-            const handshake = existingHandshake[0];
-            const receiverUsername = handshake.receiver;
-            const { data: receiverData, error: receiverError } = await withRetry(() =>
-              supabase
-                .from("users")
-                .select("kyber_private_key")
-                .eq("username", receiverUsername)
-                .limit(1)
-            );
-
-            if (receiverError || !receiverData || receiverData.length === 0 || !receiverData[0].kyber_private_key) {
-              console.warn(`⚠️ Existing handshake cannot be derived for ${username} ↔ ${data.to}`);
-            } else {
-              const ciphertext = base64ToUint8Array(handshake.ciphertext);
-              const receiverPrivKey = base64ToUint8Array(receiverData[0].kyber_private_key);
-              const decapsulator = new KyberDecapsulator();
-              const sharedSecret = await decapsulator.decapsulate(ciphertext, receiverPrivKey);
-              sharedSecretBase64 = uint8ArrayToBase64(sharedSecret);
-              console.log(`🔗 Existing handshake found between ${username} and ${data.to}`);
-            }
+          } else if (existingHandshake && existingHandshake.length > 0) {
+            handshakeData = existingHandshake[0];
+            console.log(`🔗 Existing handshake found for ${myKey} ↔ ${peerKey}`);
           } else {
-            // No handshake — perform Kyber encapsulation/decapsulation
-            console.log(`🤝 No handshake found. Initiating Kyber key exchange for ${username} ↔ ${data.to}`);
-
-            // Fetch recipient's public key and private key
-            const { data: recipientData, error: recipientError } = await withRetry(() =>
+            // No handshake — fetch recipient's public key for the client to encapsulate
+            console.log(`🤝 No handshake found. Fetching public key for ${peerKey}`);
+            const { data: recipientData } = await withRetry(() =>
               supabase
                 .from("users")
-                .select("kyber_public_key, kyber_private_key")
-                .eq("username", data.to)
+                .select("kyber_public_key")
+                .eq("username", peerKey)
                 .limit(1)
             );
 
-            if (recipientError || !recipientData || recipientData.length === 0) {
-              console.error("❌ Could not fetch recipient Kyber keys:", recipientError);
-            } else if (!recipientData[0].kyber_public_key || !recipientData[0].kyber_private_key) {
-              console.warn(`⚠️ Recipient ${data.to} has no Kyber keys. Skipping handshake.`);
-            } else {
-              const recipientPubKey = base64ToUint8Array(recipientData[0].kyber_public_key);
-              const recipientPrivKey = base64ToUint8Array(recipientData[0].kyber_private_key);
-
-              // Step 1: Encapsulate using recipient's public key
-              const encapsulator = new KyberEncapsulator();
-              const { ciphertext, sharedSecret: senderSecret } = await encapsulator.encapsulate(recipientPubKey);
-
-              // Step 2: Decapsulate using recipient's private key (verification)
-              const decapsulator = new KyberDecapsulator();
-              const receiverSecret = await decapsulator.decapsulate(ciphertext, recipientPrivKey);
-
-              // Convert to Base64
-              const senderSecretB64 = uint8ArrayToBase64(senderSecret);
-              const receiverSecretB64 = uint8ArrayToBase64(receiverSecret);
-              const ciphertextB64 = uint8ArrayToBase64(ciphertext);
-
-              if (senderSecretB64 === receiverSecretB64) {
-                console.log(`✅ Shared secrets match! Handshake verified for ${username} ↔ ${data.to}`);
-                sharedSecretBase64 = senderSecretB64;
-
-                // Store handshake in Supabase
-                const { error: insertHsError } = await withRetry(() =>
-                  supabase.from("handshakes").insert([{
-                    sender: username,
-                    receiver: data.to,
-                    ciphertext: ciphertextB64
-                  }])
-                );
-
-                if (insertHsError) {
-                  console.error("❌ Failed to store handshake:", insertHsError);
-                } else {
-                  console.log(`🔐 Handshake stored successfully for ${username} ↔ ${data.to}`);
-                }
-              } else {
-                console.error("❌ Shared secret mismatch! Handshake FAILED.");
-              }
+            if (recipientData && recipientData[0]?.kyber_public_key) {
+              handshakeData = {
+                type: "provide_public_key",
+                public_key: recipientData[0].kyber_public_key
+              };
             }
           }
         } catch (hsErr) {
@@ -744,7 +686,7 @@ wss.on("connection", async (ws, req) => {
         ws.send(JSON.stringify({
           type: "history",
           with: data.to,
-          shared_secret: sharedSecretBase64,
+          handshake: handshakeData, // Contains either the ciphertext or the recipient's public key
           messages: (history || []).map(m => ({
             id: m.id,
             from: m.from,
@@ -754,6 +696,19 @@ wss.on("connection", async (ws, req) => {
             encrypted: m.encrypted
           }))
         }));
+      }
+      else if (data.type === "store_handshake") {
+        // Client-side encapsulation finished, store the ciphertext
+        const { to, ciphertext } = data;
+        console.log(`🔐 Storing new handshake from ${username} to ${to}`);
+        const { error } = await withRetry(() =>
+          supabase.from("handshakes").insert([{
+            sender: username,
+            receiver: to,
+            ciphertext: ciphertext
+          }])
+        );
+        if (error) console.error("❌ Failed to store handshake:", error);
       }
     } catch (err) {
       console.error("⚠️ WS Message Error:", err);

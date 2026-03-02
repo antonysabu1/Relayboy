@@ -1,5 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { CryptoSession, isEncryptedMessage, wrapEncrypted } from "@/lib/crypto";
+import { secureDB } from "@/lib/db";
+import { KyberEncapsulator } from "../../kyber/kyber-encapsulate";
+import { KyberDecapsulator } from "../../kyber/kyber-decapsulate";
+import { base64ToUint8Array, uint8ArrayToBase64 } from "../../kyber/kyber-keygen";
 
 export type ConnectionStatus = "connecting" | "connected" | "disconnected";
 
@@ -23,9 +27,9 @@ interface WSMessage {
   message?: string;
   timestamp?: string;
   error?: string;
-  shared_secret?: string;
+  handshake?: any;
   with?: string;
-  messages?: unknown[];
+  messages?: any[];
   counts?: { [user: string]: number };
   encrypted?: boolean;
 }
@@ -64,7 +68,7 @@ export function useWebSocket() {
     }
   };
 
-  const getOrCreateSession = async (peer: string, sharedSecret?: string) => {
+  const getOrCreateSession = async (peer: string, handshakeData?: any) => {
     const peerKey = peer.toLowerCase();
 
     if (sessionsRef.current.has(peerKey)) return sessionsRef.current.get(peerKey)!;
@@ -73,13 +77,71 @@ export function useWebSocket() {
       return await pendingSessionsRef.current.get(peerKey)!;
     }
 
-    if (!sharedSecret) return null;
-
     const initPromise = (async () => {
       try {
-        const session = await CryptoSession.create(sharedSecret, usernameRef.current, peerKey);
-        sessionsRef.current.set(peerKey, session);
-        return session;
+        // 1. Check IndexedDB for existing session
+        const existingSession = await secureDB.getSession(peerKey);
+        if (existingSession) {
+          console.log(`💾 Restoring secure session for ${peerKey} from IndexedDB`);
+          const session = await CryptoSession.create(existingSession.sharedSecret, usernameRef.current, peerKey);
+          sessionsRef.current.set(peerKey, session);
+          return session;
+        }
+
+        // 2. No session in DB - check if we have handshake data to establish one
+        if (!handshakeData) return null;
+
+        let sharedSecretB64: string | null = null;
+
+        if (handshakeData.type === "provide_public_key") {
+          // We are SENDER: Encapsulate using peer's public key
+          console.log(`🤝 Initiating handshake with ${peerKey} (SENDER)`);
+          const encapsulator = new (KyberEncapsulator as any)();
+          const peerPubKey = base64ToUint8Array(handshakeData.public_key);
+          const { ciphertext, sharedSecret } = await encapsulator.encapsulate(peerPubKey);
+
+          sharedSecretB64 = uint8ArrayToBase64(sharedSecret);
+
+          // Store ciphertext on server
+          socketRef.current?.send(JSON.stringify({
+            type: "store_handshake",
+            to: peer,
+            ciphertext: uint8ArrayToBase64(ciphertext)
+          }));
+        } else if (handshakeData.ciphertext) {
+          // We are RECEIVER: Decapsulate using our private key
+          console.log(`🤝 Completing handshake with ${peerKey} (RECEIVER)`);
+          const myKeys = await secureDB.getUserKeys(usernameRef.current);
+          if (!myKeys) {
+            console.error("❌ Cannot decapsulate: Local private key missing!");
+            return null;
+          }
+
+          const decapsulator = new (KyberDecapsulator as any)();
+          const ciphertext = base64ToUint8Array(handshakeData.ciphertext);
+          const myPrivKey = base64ToUint8Array(myKeys.privateKey);
+          const sharedSecret = await decapsulator.decapsulate(ciphertext, myPrivKey);
+          sharedSecretB64 = uint8ArrayToBase64(sharedSecret);
+        }
+
+        if (sharedSecretB64) {
+          const session = await CryptoSession.create(sharedSecretB64, usernameRef.current, peerKey);
+
+          // Save to IndexedDB for persistence
+          await secureDB.saveSession({
+            peerUsername: peerKey,
+            sharedSecret: sharedSecretB64,
+            lastUpdated: Date.now()
+          });
+
+          sessionsRef.current.set(peerKey, session);
+          return session;
+        }
+
+        return null;
+      } catch (err) {
+        console.error("❌ Session initialization failed:", err);
+        return null;
       } finally {
         pendingSessionsRef.current.delete(peerKey);
       }
@@ -190,26 +252,20 @@ export function useWebSocket() {
           };
         });
 
-        if (data.shared_secret && usernameRef.current) {
-          const resyncPromise = (async () => {
-            try {
-              const session = await CryptoSession.create(data.shared_secret!, usernameRef.current, peerKey);
+        if (usernameRef.current) {
+          const { decrypted } = await (async () => {
+            const session = await getOrCreateSession(data.with!, data.handshake);
+            if (session) {
               const decrypted = await session.decryptHistory(processedMessages);
-              sessionsRef.current.set(peerKey, session);
-              return { decrypted, session };
-            } finally {
-              pendingSessionsRef.current.delete(peerKey);
+              return { decrypted };
             }
+            return { decrypted: processedMessages };
           })();
-
-          pendingSessionsRef.current.set(peerKey, resyncPromise.then((r) => r.session));
-          const { decrypted } = await resyncPromise;
           processedMessages = decrypted;
         }
 
         setHistory({
           with: data.with,
-          shared_secret: data.shared_secret,
           messages: processedMessages,
         });
       }
