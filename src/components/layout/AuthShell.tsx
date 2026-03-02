@@ -1,6 +1,5 @@
 import { motion } from "framer-motion";
 import AnimatedBackground from "@/components/AnimatedBackground";
-import { GlobalSpotlight } from "@/components/MagicBento";
 import PageTransition from "@/components/PageTransition";
 import { ReactNode, useRef } from "react";
 

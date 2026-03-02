@@ -25,7 +25,7 @@ import {
 } from "lucide-react";
 import PageTransition from "@/components/PageTransition";
 import AnimatedBackground from "@/components/AnimatedBackground";
-import { ParticleCard, GlobalSpotlight } from "@/components/MagicBento";
+import { ParticleCard } from "@/components/MagicBento";
 import { motion, AnimatePresence } from "framer-motion";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
@@ -555,7 +555,7 @@ export default function ChatPage() {
                         size="md"
                       />
                       <div className="min-w-0 flex flex-col">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2"  >
                           <p className="font-semibold truncate text-white">{currentChat}</p>
                           <div className="flex items-center gap-1 text-[10px] uppercase font-bold text-emerald-400 bg-emerald-950/40 px-2 py-0.5 rounded-full border border-emerald-500/20">
                             <LockKeyhole className="w-3 h-3" />
