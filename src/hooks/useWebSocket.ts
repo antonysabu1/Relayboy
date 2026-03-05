@@ -31,6 +31,7 @@ interface WSMessage {
   messages?: any[];
   counts?: { [user: string]: number };
   encrypted?: boolean;
+  peer_public_key?: string;
 }
 
 export interface ChatUser {
@@ -67,10 +68,13 @@ export function useWebSocket() {
     }
   };
 
-  const getOrCreateSession = async (peer: string, handshakeData?: any) => {
+  const getOrCreateSession = async (peer: string, handshakeData?: any, peerPublicKey?: string) => {
     const peerKey = peer.toLowerCase();
 
-    if (sessionsRef.current.has(peerKey)) return sessionsRef.current.get(peerKey)!;
+    // Only use in-memory cache if we have NO new handshake data to validate against
+    if (!handshakeData && !peerPublicKey && sessionsRef.current.has(peerKey)) {
+      return sessionsRef.current.get(peerKey)!;
+    }
 
     if (pendingSessionsRef.current.has(peerKey)) {
       return await pendingSessionsRef.current.get(peerKey)!;
@@ -78,53 +82,41 @@ export function useWebSocket() {
 
     const initPromise = (async () => {
       try {
-        // 1. Check if server explicitly requires a new handshake (e.g. DB cleared or new user)
-        let needsNewHandshake = false;
-        if (handshakeData && handshakeData.type === "provide_public_key") {
-          console.warn(`[Crypto] Server requested new handshake for ${peerKey}, ignoring local session.`);
-          needsNewHandshake = true;
-          // Purge the stale index db session!
-          await secureDB.deleteSession(peerKey);
-        }
+        // 1. Check IndexedDB for existing session and validate it against the server handshake
+        let existingSession = await secureDB.getSession(peerKey);
 
-        // 2. Check IndexedDB for existing session
-        if (!needsNewHandshake) {
-          const existingSession = await secureDB.getSession(peerKey);
-          if (existingSession) {
-            console.log(`💾 Restoring secure session for ${peerKey} from IndexedDB`);
-            const session = await CryptoSession.create(existingSession.sharedSecret, usernameRef.current, peerKey);
-            sessionsRef.current.set(peerKey, session);
-            return session;
+        if (handshakeData) {
+          if (handshakeData.ciphertext) {
+            if (existingSession && existingSession.ciphertext !== handshakeData.ciphertext) {
+              console.warn(`[Crypto] Cached ciphertext mismatch for ${peerKey}. Discarding stale session.`);
+              await secureDB.deleteSession(peerKey);
+              existingSession = null;
+            }
+          } else if (handshakeData.type === "provide_public_key") {
+            if (existingSession) {
+              console.warn(`[Crypto] Server requested new handshake for ${peerKey}. Discarding stale session.`);
+              await secureDB.deleteSession(peerKey);
+              existingSession = null;
+            }
           }
         }
 
-        // 3. No session in DB (or new handshake needed) - check if we have handshake data to establish one
-        if (!handshakeData) return null;
+        if (existingSession) {
+          console.log(`💾 Restoring secure session for ${peerKey} from IndexedDB`);
+          const session = await CryptoSession.create(existingSession.sharedSecret, usernameRef.current, peerKey);
+          sessionsRef.current.set(peerKey, session);
+          return session;
+        }
+
+        // 2. No valid session in DB - check if we have data to establish one
+        if (!handshakeData && !peerPublicKey) return null;
 
         let sharedSecretB64: string | null = null;
+        let newCiphertext: string | null = null;
 
-        if (handshakeData.type === "provide_public_key") {
-          // We are SENDER: Encapsulate using peer's public key
-          console.log(`🤝 Initiating handshake with ${peerKey} (SENDER) via API`);
+        const isReceiverOfCurrentHandshake = handshakeData && handshakeData.ciphertext && handshakeData.receiver?.toLowerCase() === usernameRef.current.toLowerCase();
 
-          const response = await fetch("/api/kyber/encapsulate", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ publicKey: handshakeData.public_key })
-          });
-
-          const data = await response.json();
-          if (!response.ok) throw new Error(data.error || "Encapsulation failed");
-
-          sharedSecretB64 = data.sharedSecret;
-
-          // Store ciphertext on server
-          socketRef.current?.send(JSON.stringify({
-            type: "store_handshake",
-            to: peer,
-            ciphertext: data.ciphertext
-          }));
-        } else if (handshakeData.ciphertext) {
+        if (isReceiverOfCurrentHandshake) {
           // We are RECEIVER: Decapsulate using our private key
           console.log(`🤝 Completing handshake with ${peerKey} (RECEIVER) via API`);
           const myKeys = await secureDB.getUserKeys(usernameRef.current);
@@ -146,6 +138,35 @@ export function useWebSocket() {
           if (!response.ok) throw new Error(data.error || "Decapsulation failed");
 
           sharedSecretB64 = data.sharedSecret;
+          newCiphertext = handshakeData.ciphertext;
+        } else {
+          // We are SENDER (or no handshake exists, or we lost our sender cache): Encapsulate using peer's public key
+          const pubKeyToUse = (handshakeData && handshakeData.public_key) || peerPublicKey;
+          if (!pubKeyToUse) {
+            console.error("❌ Cannot encapsulate: Peer public key missing!");
+            return null;
+          }
+
+          console.log(`🤝 Initiating new handshake with ${peerKey} (SENDER) via API`);
+
+          const response = await fetch("/api/kyber/encapsulate", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ publicKey: pubKeyToUse })
+          });
+
+          const data = await response.json();
+          if (!response.ok) throw new Error(data.error || "Encapsulation failed");
+
+          sharedSecretB64 = data.sharedSecret;
+          newCiphertext = data.ciphertext;
+
+          // Store ciphertext on server
+          socketRef.current?.send(JSON.stringify({
+            type: "store_handshake",
+            to: peer,
+            ciphertext: data.ciphertext
+          }));
         }
 
         if (sharedSecretB64) {
@@ -155,6 +176,7 @@ export function useWebSocket() {
           await secureDB.saveSession({
             peerUsername: peerKey,
             sharedSecret: sharedSecretB64,
+            ciphertext: newCiphertext || undefined,
             lastUpdated: Date.now()
           });
 
@@ -175,7 +197,7 @@ export function useWebSocket() {
     return await initPromise;
   };
 
-  const connect = useCallback(() => {
+  const connectLogic = () => {
     if (socketRef.current?.readyState === WebSocket.OPEN || socketRef.current?.readyState === WebSocket.CONNECTING) {
       return;
     }
@@ -238,7 +260,13 @@ export function useWebSocket() {
             try {
               displayMessage = await session.decrypt(data.message.slice(4));
             } catch {
-              displayMessage = "[Decryption Failed]";
+              console.warn(`[Crypto] Live message decrypt failed for ${data.from}. Invalidating stale session.`);
+              // Invalidate stale session from memory and IndexedDB
+              sessionsRef.current.delete(data.from.toLowerCase());
+              await secureDB.deleteSession(data.from.toLowerCase());
+              // Request fresh history with handshake data
+              socketRef.current?.send(JSON.stringify({ type: "get_history", to: data.from }));
+              displayMessage = "🔄 [Re-establishing secure session...]";
             }
           } else {
             displayMessage = "[Encrypted - Open chat to decrypt]";
@@ -276,22 +304,19 @@ export function useWebSocket() {
           };
         });
 
-        if (usernameRef.current) {
-          const { decrypted } = await (async () => {
-            const session = await getOrCreateSession(data.with!, data.handshake);
-            if (session) {
-              const decrypted = await session.decryptHistory(processedMessages);
-              return { decrypted };
-            }
-            return { decrypted: processedMessages };
-          })();
-          processedMessages = decrypted;
-        }
+        if (data.with) {
+          // It's a history payload
+          let decryptedMessages = processedMessages; // Initialize with processedMessages
+          const session = await getOrCreateSession(data.with, data.handshake, data.peer_public_key);
+          if (session) {
+            decryptedMessages = await session.decryptHistory(processedMessages);
+          }
 
-        setHistory({
-          with: data.with,
-          messages: processedMessages,
-        });
+          setHistory({
+            with: data.with,
+            messages: decryptedMessages,
+          });
+        }
       }
     };
 
@@ -318,7 +343,9 @@ export function useWebSocket() {
       setError("WebSocket connection failed. Reconnecting...");
       socket.close();
     };
-  }, []);
+  };
+
+  const connect = useCallback(connectLogic, []);
 
   const sendMessage = useCallback(async (to: string, message: string) => {
     if (socketRef.current?.readyState === WebSocket.OPEN) {
@@ -375,15 +402,13 @@ export function useWebSocket() {
     status,
     username,
     avatarUrl,
-    setAvatarUrl,
     users,
     error,
     incomingMessage,
     history,
-    seenBy,
     unreadCounts,
+    seenBy,
     reconnectAttempt,
-    setUnreadCounts,
     connect,
     sendMessage,
     getHistory,

@@ -16,6 +16,7 @@ export interface UserKeyRecord {
 export interface SessionRecord {
   peerUsername: string;
   sharedSecret: string; // Base64
+  ciphertext?: string; // Base64
   lastUpdated: number;
 }
 
