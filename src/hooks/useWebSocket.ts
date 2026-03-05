@@ -87,10 +87,18 @@ export function useWebSocket() {
 
         if (handshakeData) {
           if (handshakeData.ciphertext) {
-            if (existingSession && existingSession.ciphertext !== handshakeData.ciphertext) {
+            if (existingSession && existingSession.ciphertext && existingSession.ciphertext !== handshakeData.ciphertext) {
+              // Both ciphertexts exist but differ — session is truly stale
               console.warn(`[Crypto] Cached ciphertext mismatch for ${peerKey}. Discarding stale session.`);
               await secureDB.deleteSession(peerKey);
               existingSession = null;
+            } else if (existingSession && !existingSession.ciphertext) {
+              // Old-format session without ciphertext — update it for future validation
+              console.log(`[Crypto] Updating stored session for ${peerKey} with server ciphertext.`);
+              await secureDB.saveSession({
+                ...existingSession,
+                ciphertext: handshakeData.ciphertext,
+              });
             }
           } else if (handshakeData.type === "provide_public_key") {
             if (existingSession) {
@@ -255,21 +263,35 @@ export function useWebSocket() {
         let displayMessage = data.message;
 
         if (isEncryptedMessage(data.message)) {
-          const session = await getOrCreateSession(data.from);
-          if (session) {
-            try {
-              displayMessage = await session.decrypt(data.message.slice(4));
-            } catch {
-              console.warn(`[Crypto] Live message decrypt failed for ${data.from}. Invalidating stale session.`);
-              // Invalidate stale session from memory and IndexedDB
-              sessionsRef.current.delete(data.from.toLowerCase());
-              await secureDB.deleteSession(data.from.toLowerCase());
-              // Request fresh history with handshake data
-              socketRef.current?.send(JSON.stringify({ type: "get_history", to: data.from }));
-              displayMessage = "🔄 [Re-establishing secure session...]";
+          // Check cache first for live messages
+          if (data.id) {
+            const cached = await secureDB.getCachedMessages([data.id]);
+            const cachedText = cached.get(String(data.id));
+            if (cachedText) {
+              displayMessage = cachedText;
             }
-          } else {
-            displayMessage = "[Encrypted - Open chat to decrypt]";
+          }
+
+          // If not in cache, try decrypting
+          if (displayMessage === data.message) {
+            const session = await getOrCreateSession(data.from);
+            if (session) {
+              try {
+                displayMessage = await session.decrypt(data.message.slice(4));
+                // Cache the decrypted message
+                if (data.id) {
+                  secureDB.cacheDecryptedMessage(data.id, displayMessage).catch(() => { });
+                }
+              } catch {
+                console.warn(`[Crypto] Live message decrypt failed for ${data.from}. Invalidating stale session.`);
+                sessionsRef.current.delete(data.from.toLowerCase());
+                await secureDB.deleteSession(data.from.toLowerCase());
+                socketRef.current?.send(JSON.stringify({ type: "get_history", to: data.from }));
+                displayMessage = "🔄 [Re-establishing secure session...]";
+              }
+            } else {
+              displayMessage = "[Encrypted - Open chat to decrypt]";
+            }
           }
         }
 
@@ -305,16 +327,56 @@ export function useWebSocket() {
         });
 
         if (data.with) {
-          // It's a history payload
-          let decryptedMessages = processedMessages; // Initialize with processedMessages
+          // Collect message IDs for cache lookup
+          const messageIds = processedMessages
+            .filter(m => m.id && isEncryptedMessage(m.message))
+            .map(m => m.id!);
+
+          // Get cached decrypted messages
+          const cachedMessages = await secureDB.getCachedMessages(messageIds);
+
+          // Try session-based decryption for uncached messages
           const session = await getOrCreateSession(data.with, data.handshake, data.peer_public_key);
+          let decryptedViaSession: ChatMessage[] | null = null;
           if (session) {
-            decryptedMessages = await session.decryptHistory(processedMessages);
+            try {
+              decryptedViaSession = await session.decryptHistory(processedMessages);
+            } catch (err) {
+              console.warn(`[Crypto] History decryption failed:`, err);
+            }
           }
+
+          // Merge: prefer session decryption, fall back to cache, then show as-is
+          const finalMessages = processedMessages.map((msg, i) => {
+            // If session decrypted it successfully, use that
+            if (decryptedViaSession && decryptedViaSession[i]) {
+              const sessionDecrypted = decryptedViaSession[i];
+              if (!sessionDecrypted.message.includes("[Decryption Failed]") &&
+                !sessionDecrypted.message.includes("[Format Error]")) {
+                // Cache the successfully decrypted message
+                if (msg.id) {
+                  secureDB.cacheDecryptedMessage(msg.id, sessionDecrypted.message).catch(() => { });
+                }
+                return sessionDecrypted;
+              }
+            }
+
+            // Fall back to cached plaintext
+            if (msg.id && cachedMessages.has(String(msg.id))) {
+              return { ...msg, message: cachedMessages.get(String(msg.id))! };
+            }
+
+            // If session decrypted it (even with failure), use that result
+            if (decryptedViaSession && decryptedViaSession[i]) {
+              return decryptedViaSession[i];
+            }
+
+            return msg;
+          });
 
           setHistory({
             with: data.with,
-            messages: decryptedMessages,
+            messages: finalMessages,
           });
         }
       }

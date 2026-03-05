@@ -4,7 +4,7 @@
  */
 
 const DB_NAME = "relayboy_secure_storage";
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 export interface UserKeyRecord {
   username: string;
@@ -20,6 +20,11 @@ export interface SessionRecord {
   lastUpdated: number;
 }
 
+export interface DecryptedMessageRecord {
+  id: string | number;
+  plaintext: string;
+}
+
 export class SecureDB {
   private db: IDBDatabase | null = null;
 
@@ -32,19 +37,21 @@ export class SecureDB {
       request.onupgradeneeded = (event) => {
         const db = (event.target as IDBOpenDBRequest).result;
 
-        // Store for user's own keys
         if (!db.objectStoreNames.contains("user_keys")) {
           db.createObjectStore("user_keys", { keyPath: "username" });
         }
 
-        // Store for conversation sessions/secrets
         if (!db.objectStoreNames.contains("sessions")) {
           db.createObjectStore("sessions", { keyPath: "peerUsername" });
         }
 
-        // Store for local message cache (optional, but requested)
         if (!db.objectStoreNames.contains("messages")) {
           db.createObjectStore("messages", { keyPath: "id" });
+        }
+
+        // New: decrypted message plaintext cache
+        if (!db.objectStoreNames.contains("decrypted_cache")) {
+          db.createObjectStore("decrypted_cache", { keyPath: "id" });
         }
       };
 
@@ -87,6 +94,42 @@ export class SecureDB {
   async deleteSession(peerUsername: string): Promise<void> {
     await this.init();
     return this.performTransaction("sessions", "readwrite", (store) => store.delete(peerUsername.toLowerCase()));
+  }
+
+  // --- Decrypted Message Cache ---
+
+  async cacheDecryptedMessage(id: string | number, plaintext: string): Promise<void> {
+    await this.init();
+    return this.performTransaction("decrypted_cache", "readwrite", (store) =>
+      store.put({ id: String(id), plaintext })
+    );
+  }
+
+  async getCachedMessages(ids: (string | number)[]): Promise<Map<string, string>> {
+    await this.init();
+    const result = new Map<string, string>();
+    if (!this.db || ids.length === 0) return result;
+
+    return new Promise((resolve, reject) => {
+      const transaction = this.db!.transaction("decrypted_cache", "readonly");
+      const store = transaction.objectStore("decrypted_cache");
+      let pending = ids.length;
+
+      for (const id of ids) {
+        const req = store.get(String(id));
+        req.onsuccess = () => {
+          if (req.result) {
+            result.set(String(id), req.result.plaintext);
+          }
+          pending--;
+          if (pending === 0) resolve(result);
+        };
+        req.onerror = () => {
+          pending--;
+          if (pending === 0) resolve(result);
+        };
+      }
+    });
   }
 
   // --- Generic Transaction Helper ---
