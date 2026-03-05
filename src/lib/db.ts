@@ -30,7 +30,7 @@ export class SecureDB {
 
       request.onupgradeneeded = (event) => {
         const db = (event.target as IDBOpenDBRequest).result;
-        
+
         // Store for user's own keys
         if (!db.objectStoreNames.contains("user_keys")) {
           db.createObjectStore("user_keys", { keyPath: "username" });
@@ -83,6 +83,11 @@ export class SecureDB {
     return this.performTransaction("sessions", "readonly", (store) => store.get(peerUsername.toLowerCase()));
   }
 
+  async deleteSession(peerUsername: string): Promise<void> {
+    await this.init();
+    return this.performTransaction("sessions", "readwrite", (store) => store.delete(peerUsername.toLowerCase()));
+  }
+
   // --- Generic Transaction Helper ---
 
   private async performTransaction<T>(
@@ -92,7 +97,7 @@ export class SecureDB {
   ): Promise<T> {
     return new Promise((resolve, reject) => {
       if (!this.db) return reject("DB not initialized");
-      
+
       const transaction = this.db.transaction(storeName, mode);
       const store = transaction.objectStore(storeName);
       const request = operation(store);

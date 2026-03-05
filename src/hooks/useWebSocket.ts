@@ -83,6 +83,8 @@ export function useWebSocket() {
         if (handshakeData && handshakeData.type === "provide_public_key") {
           console.warn(`[Crypto] Server requested new handshake for ${peerKey}, ignoring local session.`);
           needsNewHandshake = true;
+          // Purge the stale index db session!
+          await secureDB.deleteSession(peerKey);
         }
 
         // 2. Check IndexedDB for existing session
