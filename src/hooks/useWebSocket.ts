@@ -1,9 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { CryptoSession, isEncryptedMessage, wrapEncrypted } from "@/lib/crypto";
 import { secureDB } from "@/lib/db";
-import { KyberEncapsulator } from "../../kyber/kyber-encapsulate";
-import { KyberDecapsulator } from "../../kyber/kyber-decapsulate";
-import { base64ToUint8Array, uint8ArrayToBase64 } from "../../kyber/kyber-keygen";
+// Kyber removed, replacing with API calls
+
 
 export type ConnectionStatus = "connecting" | "connected" | "disconnected";
 
@@ -95,33 +94,47 @@ export function useWebSocket() {
 
         if (handshakeData.type === "provide_public_key") {
           // We are SENDER: Encapsulate using peer's public key
-          console.log(`🤝 Initiating handshake with ${peerKey} (SENDER)`);
-          const encapsulator = new (KyberEncapsulator as any)();
-          const peerPubKey = base64ToUint8Array(handshakeData.public_key);
-          const { ciphertext, sharedSecret } = await encapsulator.encapsulate(peerPubKey);
+          console.log(`🤝 Initiating handshake with ${peerKey} (SENDER) via API`);
 
-          sharedSecretB64 = uint8ArrayToBase64(sharedSecret);
+          const response = await fetch("/api/kyber/encapsulate", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ publicKey: handshakeData.public_key })
+          });
+
+          const data = await response.json();
+          if (!response.ok) throw new Error(data.error || "Encapsulation failed");
+
+          sharedSecretB64 = data.sharedSecret;
 
           // Store ciphertext on server
           socketRef.current?.send(JSON.stringify({
             type: "store_handshake",
             to: peer,
-            ciphertext: uint8ArrayToBase64(ciphertext)
+            ciphertext: data.ciphertext
           }));
         } else if (handshakeData.ciphertext) {
           // We are RECEIVER: Decapsulate using our private key
-          console.log(`🤝 Completing handshake with ${peerKey} (RECEIVER)`);
+          console.log(`🤝 Completing handshake with ${peerKey} (RECEIVER) via API`);
           const myKeys = await secureDB.getUserKeys(usernameRef.current);
           if (!myKeys) {
             console.error("❌ Cannot decapsulate: Local private key missing!");
             return null;
           }
 
-          const decapsulator = new (KyberDecapsulator as any)();
-          const ciphertext = base64ToUint8Array(handshakeData.ciphertext);
-          const myPrivKey = base64ToUint8Array(myKeys.privateKey);
-          const sharedSecret = await decapsulator.decapsulate(ciphertext, myPrivKey);
-          sharedSecretB64 = uint8ArrayToBase64(sharedSecret);
+          const response = await fetch("/api/kyber/decapsulate", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              ciphertext: handshakeData.ciphertext,
+              privateKey: myKeys.privateKey
+            })
+          });
+
+          const data = await response.json();
+          if (!response.ok) throw new Error(data.error || "Decapsulation failed");
+
+          sharedSecretB64 = data.sharedSecret;
         }
 
         if (sharedSecretB64) {

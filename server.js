@@ -244,6 +244,59 @@ app.post("/verify-register-otp", async (req, res) => {
   }
 });
 
+// ---------------- KYBER ENDPOINTS ----------------
+app.post("/api/kyber/keygen", async (req, res) => {
+  try {
+    const keyGen = new KyberKeyGenerator();
+    const { publicKey, privateKey } = await keyGen.generateKeyPair();
+    res.json({
+      publicKey: uint8ArrayToBase64(publicKey),
+      privateKey: uint8ArrayToBase64(privateKey)
+    });
+  } catch (err) {
+    console.error("[Kyber KeyGen Error]:", err);
+    res.status(500).json({ error: "Key generation failed" });
+  }
+});
+
+app.post("/api/kyber/encapsulate", async (req, res) => {
+  try {
+    const { publicKey } = req.body;
+    if (!publicKey) return res.status(400).json({ error: "Missing public key" });
+
+    const encapsulator = new KyberEncapsulator();
+    const pubKeyUint8 = base64ToUint8Array(publicKey);
+    const { ciphertext, sharedSecret } = await encapsulator.encapsulate(pubKeyUint8);
+
+    res.json({
+      ciphertext: uint8ArrayToBase64(ciphertext),
+      sharedSecret: uint8ArrayToBase64(sharedSecret)
+    });
+  } catch (err) {
+    console.error("[Kyber Encapsulate Error]:", err);
+    res.status(500).json({ error: "Encapsulation failed" });
+  }
+});
+
+app.post("/api/kyber/decapsulate", async (req, res) => {
+  try {
+    const { ciphertext, privateKey } = req.body;
+    if (!ciphertext || !privateKey) return res.status(400).json({ error: "Missing ciphertext or private key" });
+
+    const decapsulator = new KyberDecapsulator();
+    const cipherUint8 = base64ToUint8Array(ciphertext);
+    const privKeyUint8 = base64ToUint8Array(privateKey);
+    const sharedSecret = await decapsulator.decapsulate(cipherUint8, privKeyUint8);
+
+    res.json({
+      sharedSecret: uint8ArrayToBase64(sharedSecret)
+    });
+  } catch (err) {
+    console.error("[Kyber Decapsulate Error]:", err);
+    res.status(500).json({ error: "Decapsulation failed" });
+  }
+});
+
 // ---------------- LOGIN ----------------
 app.post("/login", async (req, res) => {
   const { emailOrUsername, password } = req.body;

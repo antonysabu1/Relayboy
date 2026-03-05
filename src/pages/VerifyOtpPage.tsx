@@ -8,7 +8,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import AuthShell from "@/components/layout/AuthShell";
-import { KyberKeyGenerator, uint8ArrayToBase64 } from "../../kyber/kyber-keygen";
 import { secureDB } from "@/lib/db";
 import { encryptPrivateKey } from "@/lib/keyBackup";
 
@@ -60,12 +59,19 @@ export default function VerifyOtpPage() {
     setError("");
 
     try {
-      // Generate Kyber keys on the client
-      console.log("🔐 Generating Post-Quantum Kyber keys...");
-      const keyGen = new KyberKeyGenerator();
-      const { publicKey, privateKey } = await keyGen.generateKeyPair();
-      const publicKeyB64 = uint8ArrayToBase64(publicKey);
-      const privateKeyB64 = uint8ArrayToBase64(privateKey);
+      // Generate Kyber keys via backend API
+      console.log("🔐 Generating Post-Quantum Kyber keys via API...");
+
+      const response = await fetch("/api/kyber/keygen", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" }
+      });
+
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Key generation failed on server");
+
+      const publicKeyB64 = data.publicKey;
+      const privateKeyB64 = data.privateKey;
 
       setPendingKeys({ publicKeyB64, privateKeyB64 });
       setStep("master_password");
