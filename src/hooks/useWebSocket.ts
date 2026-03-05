@@ -78,16 +78,25 @@ export function useWebSocket() {
 
     const initPromise = (async () => {
       try {
-        // 1. Check IndexedDB for existing session
-        const existingSession = await secureDB.getSession(peerKey);
-        if (existingSession) {
-          console.log(`💾 Restoring secure session for ${peerKey} from IndexedDB`);
-          const session = await CryptoSession.create(existingSession.sharedSecret, usernameRef.current, peerKey);
-          sessionsRef.current.set(peerKey, session);
-          return session;
+        // 1. Check if server explicitly requires a new handshake (e.g. DB cleared or new user)
+        let needsNewHandshake = false;
+        if (handshakeData && handshakeData.type === "provide_public_key") {
+          console.warn(`[Crypto] Server requested new handshake for ${peerKey}, ignoring local session.`);
+          needsNewHandshake = true;
         }
 
-        // 2. No session in DB - check if we have handshake data to establish one
+        // 2. Check IndexedDB for existing session
+        if (!needsNewHandshake) {
+          const existingSession = await secureDB.getSession(peerKey);
+          if (existingSession) {
+            console.log(`💾 Restoring secure session for ${peerKey} from IndexedDB`);
+            const session = await CryptoSession.create(existingSession.sharedSecret, usernameRef.current, peerKey);
+            sessionsRef.current.set(peerKey, session);
+            return session;
+          }
+        }
+
+        // 3. No session in DB (or new handshake needed) - check if we have handshake data to establish one
         if (!handshakeData) return null;
 
         let sharedSecretB64: string | null = null;
