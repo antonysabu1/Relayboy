@@ -244,6 +244,59 @@ app.post("/verify-register-otp", async (req, res) => {
   }
 });
 
+// ---------------- KYBER ENDPOINTS ----------------
+app.post("/api/kyber/keygen", async (req, res) => {
+  try {
+    const keyGen = new KyberKeyGenerator();
+    const { publicKey, privateKey } = await keyGen.generateKeyPair();
+    res.json({
+      publicKey: uint8ArrayToBase64(publicKey),
+      privateKey: uint8ArrayToBase64(privateKey)
+    });
+  } catch (err) {
+    console.error("[Kyber KeyGen Error]:", err);
+    res.status(500).json({ error: "Key generation failed" });
+  }
+});
+
+app.post("/api/kyber/encapsulate", async (req, res) => {
+  try {
+    const { publicKey } = req.body;
+    if (!publicKey) return res.status(400).json({ error: "Missing public key" });
+
+    const encapsulator = new KyberEncapsulator();
+    const pubKeyUint8 = base64ToUint8Array(publicKey);
+    const { ciphertext, sharedSecret } = await encapsulator.encapsulate(pubKeyUint8);
+
+    res.json({
+      ciphertext: uint8ArrayToBase64(ciphertext),
+      sharedSecret: uint8ArrayToBase64(sharedSecret)
+    });
+  } catch (err) {
+    console.error("[Kyber Encapsulate Error]:", err);
+    res.status(500).json({ error: "Encapsulation failed" });
+  }
+});
+
+app.post("/api/kyber/decapsulate", async (req, res) => {
+  try {
+    const { ciphertext, privateKey } = req.body;
+    if (!ciphertext || !privateKey) return res.status(400).json({ error: "Missing ciphertext or private key" });
+
+    const decapsulator = new KyberDecapsulator();
+    const cipherUint8 = base64ToUint8Array(ciphertext);
+    const privKeyUint8 = base64ToUint8Array(privateKey);
+    const sharedSecret = await decapsulator.decapsulate(cipherUint8, privKeyUint8);
+
+    res.json({
+      sharedSecret: uint8ArrayToBase64(sharedSecret)
+    });
+  } catch (err) {
+    console.error("[Kyber Decapsulate Error]:", err);
+    res.status(500).json({ error: "Decapsulation failed" });
+  }
+});
+
 // ---------------- LOGIN ----------------
 app.post("/login", async (req, res) => {
   const { emailOrUsername, password } = req.body;
@@ -644,12 +697,28 @@ wss.on("connection", async (ws, req) => {
         console.log(`📜 Fetching history/handshake for ${myKey} ↔ ${peerKey}`);
 
         let handshakeData = null;
+        let peerPublicKey = null;
+
         try {
+          // ALWAYS fetch recipient public key so the client can recreate handshake if needed
+          const { data: recipientData } = await withRetry(() =>
+            supabase
+              .from("users")
+              .select("kyber_public_key")
+              .eq("username", peerKey)
+              .limit(1)
+          );
+
+          if (recipientData && recipientData[0]?.kyber_public_key) {
+            peerPublicKey = recipientData[0].kyber_public_key;
+          }
+
           const { data: existingHandshake, error: hsError } = await withRetry(() =>
             supabase
               .from("handshakes")
-              .select("sender, receiver, ciphertext")
+              .select("sender, receiver, ciphertext, created_at")
               .or(`and(sender.eq."${myKey}",receiver.eq."${peerKey}"),and(sender.eq."${peerKey}",receiver.eq."${myKey}")`)
+              .order("created_at", { ascending: false })
               .limit(1)
           );
 
@@ -659,20 +728,11 @@ wss.on("connection", async (ws, req) => {
             handshakeData = existingHandshake[0];
             console.log(`🔗 Existing handshake found for ${myKey} ↔ ${peerKey}`);
           } else {
-            // No handshake — fetch recipient's public key for the client to encapsulate
-            console.log(`🤝 No handshake found. Fetching public key for ${peerKey}`);
-            const { data: recipientData } = await withRetry(() =>
-              supabase
-                .from("users")
-                .select("kyber_public_key")
-                .eq("username", peerKey)
-                .limit(1)
-            );
-
-            if (recipientData && recipientData[0]?.kyber_public_key) {
+            console.log(`🤝 No handshake found.`);
+            if (peerPublicKey) {
               handshakeData = {
                 type: "provide_public_key",
-                public_key: recipientData[0].kyber_public_key
+                public_key: peerPublicKey
               };
             }
           }
@@ -697,6 +757,7 @@ wss.on("connection", async (ws, req) => {
           type: "history",
           with: data.to,
           handshake: handshakeData, // Contains either the ciphertext or the recipient's public key
+          peer_public_key: peerPublicKey,
           messages: (history || []).map(m => ({
             id: m.id,
             from: m.from,
@@ -711,6 +772,13 @@ wss.on("connection", async (ws, req) => {
         // Client-side encapsulation finished, store the ciphertext
         const { to, ciphertext } = data;
         console.log(`🔐 Storing new handshake from ${username} to ${to}`);
+
+        // Delete any existing handshakes first to prevent stale rows being returned
+        await withRetry(() =>
+          supabase.from("handshakes").delete()
+            .or(`and(sender.eq."${username}",receiver.eq."${to}"),and(sender.eq."${to}",receiver.eq."${username}")`)
+        );
+
         const { error } = await withRetry(() =>
           supabase.from("handshakes").insert([{
             sender: username,

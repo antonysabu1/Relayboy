@@ -253,17 +253,20 @@ export class CryptoSession {
     private peerUsername: string;
     private sendMutex: Mutex = new Mutex();
     private recvMutex: Mutex = new Mutex();
+    private sharedSecretBase64: string;
 
     private constructor(
         sendChain: RatchetChain,
         recvChain: RatchetChain,
         myUsername: string,
-        peerUsername: string
+        peerUsername: string,
+        sharedSecretBase64: string
     ) {
         this.sendChain = sendChain;
         this.recvChain = recvChain;
         this.myUsername = myUsername;
         this.peerUsername = peerUsername;
+        this.sharedSecretBase64 = sharedSecretBase64;
     }
 
     /**
@@ -300,9 +303,9 @@ export class CryptoSession {
         // My send chain = chain in my→peer direction
         // My recv chain = chain in peer→my direction
         if (myLower === sorted[0]) {
-            return new CryptoSession(chainA, chainB, myLower, peerLower);
+            return new CryptoSession(chainA, chainB, myLower, peerLower, sharedSecretBase64);
         } else {
-            return new CryptoSession(chainB, chainA, myLower, peerLower);
+            return new CryptoSession(chainB, chainA, myLower, peerLower, sharedSecretBase64);
         }
     }
 
@@ -368,11 +371,17 @@ export class CryptoSession {
     > {
         console.debug(`📜 [Crypto] Replaying history for ${this.peerUsername} (${messages.length} messages)`);
 
-        // Acquire BOTH locks for the entire duration of history replay to ensure atomicity
         const releaseSend = await this.sendMutex.lock();
         const releaseRecv = await this.recvMutex.lock();
 
         try {
+            // Re-create fresh chains from root so history replay is idempotent
+            const freshSession = await CryptoSession.create(
+                this.sharedSecretBase64,
+                this.myUsername,
+                this.peerUsername
+            );
+
             const decrypted: typeof messages = [];
 
             for (let i = 0; i < messages.length; i++) {
@@ -389,8 +398,8 @@ export class CryptoSession {
                     const encData = fromBase64(payload);
 
                     // Determine which chain based on sender (Case-insensitive)
-                    const isMine = msg.from.toLowerCase() === this.myUsername;
-                    const chain = isMine ? this.sendChain : this.recvChain;
+                    const isMine = msg.from.toLowerCase() === this.myUsername.toLowerCase();
+                    const chain = isMine ? freshSession.sendChain : freshSession.recvChain;
 
                     // Advance chain and decrypt (Sequential, no inner wait for locks)
                     const { msgKey, step } = await chain.advance();
@@ -416,6 +425,10 @@ export class CryptoSession {
                     });
                 }
             }
+
+            // Sync main active chains to the freshly replayed state
+            this.sendChain = freshSession.sendChain;
+            this.recvChain = freshSession.recvChain;
 
             return decrypted;
         } finally {
